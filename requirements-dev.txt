@@ -1,0 +1,7 @@
+pytest==9.0.2
+ruff==0.15.7
+setuptools==82.0.1
+iniconfig==2.3.0
+pluggy==1.6.0
+cmake==4.2.3
+ninja==1.13.0

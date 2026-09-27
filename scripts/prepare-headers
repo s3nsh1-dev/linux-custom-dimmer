@@ -1,0 +1,40 @@
+#!/usr/bin/python3
+"""Extract matching distro headers locally; never run package maintainer scripts."""
+
+import json
+import subprocess
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parents[1]
+PAIRS = {
+    "qt6-base-dev": "libqt6core6t64",
+    "liblayershellqtinterface-dev": "liblayershellqtinterface6",
+}
+versions = {
+    dev: subprocess.check_output(
+        ["dpkg-query", "-W", "-f=${Version}", runtime], text=True
+    ).strip()
+    for dev, runtime in PAIRS.items()
+}
+cache = ROOT / ".local/debs"
+destination = ROOT / ".local/sysroot"
+cache.mkdir(parents=True, exist_ok=True)
+destination.mkdir(parents=True, exist_ok=True)
+marker = destination / "versions.json"
+if marker.exists() and json.loads(marker.read_text()) == versions:
+    print("Matching Ubuntu development headers already prepared")
+else:
+    for package, version in versions.items():
+        subprocess.run(["apt-get", "download", f"{package}={version}"], cwd=cache, check=True)
+        matches = []
+        for archive in cache.glob(f"{package}_*.deb"):
+            found = subprocess.check_output(
+                ["dpkg-deb", "-f", str(archive), "Version"], text=True
+            ).strip()
+            if found == version:
+                matches.append(archive)
+        if len(matches) != 1:
+            raise RuntimeError(f"Expected exactly one matching archive for {package} {version}")
+        subprocess.run(["dpkg-deb", "-x", str(matches[0]), str(destination)], check=True)
+    marker.write_text(json.dumps(versions, indent=2) + "\n")
+    print("Prepared matching Ubuntu headers under .local/sysroot; system packages unchanged")

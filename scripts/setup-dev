@@ -1,0 +1,17 @@
+#!/bin/bash
+set -euo pipefail
+cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
+for tool in /usr/bin/python3 g++ dpkg-query dpkg-deb apt-get /usr/bin/wayland-info; do
+    if ! command -v "$tool" >/dev/null; then
+        echo "Missing $tool. See README.md for the Ubuntu dependency command." >&2
+        exit 1
+    fi
+done
+# Ubuntu already supplies pip here. --without-pip avoids needing python3-venv's
+# separate ensurepip bundle; all pip writes still go into the virtual environment.
+/usr/bin/python3 -m venv --system-site-packages --without-pip .venv
+export PIP_CACHE_DIR="$PWD/.local/pip-cache"
+.venv/bin/python3 -m pip install -r requirements-dev.txt
+.venv/bin/python3 -m pip install --no-deps --no-build-isolation -e .
+/usr/bin/python3 scripts/prepare-headers
+exec scripts/check

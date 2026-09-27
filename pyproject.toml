@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools==82.0.1"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "linux-custom-dimmer"
+version = "0.1.0.dev0"
+description = "A small neutral screen dimmer for KDE Wayland"
+requires-python = ">=3.12"
+# PyQt6 and dbus-python come from Ubuntu, never pip's bundled Qt.
+dependencies = []
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-ra"
+markers = ["live: opt-in real desktop/user-service checks"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
