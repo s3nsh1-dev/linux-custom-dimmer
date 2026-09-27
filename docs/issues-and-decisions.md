@@ -230,3 +230,23 @@ also supplies the independent KDE command shortcut. No root access, extra daemon
 system unit, autostart or global shell integration was added. Physical key and
 interaction acceptance, final lifecycle tests and resource measurements remain
 in progress. See the Stage 2 commits in status.
+
+## 2026-09-27: IPC validation and real application recovery
+
+Adversarial requests with a list or object as `action` raised TypeError during
+set membership instead of a protocol error. Two regression cases failed, then
+passed after checking that the action is a string. Real Unix-socket tests also
+cover multiple JSON frames, oversized requests, partial-client expiry, private
+permissions and cleanup. The tool sandbox blocks socket creation (EPERM);
+running the same safe tests with ordinary-user tool access passed. No sudo is
+involved, and tests still use only their own temporary sockets.
+
+Relaunch now sends a bounded, fixed `show` request after checking service
+identity. A frozen or unresponsive instance produces a recovery instruction;
+it never causes a second instance. The installed KDE shortcut route and actual
+desktop-entry launch route killed the frozen real app in 0.256s and 0.588s.
+The unrelated sentinel survived. SIGTERM, SIGKILL, quit, Stop and duplicate
+launch tests passed, each with an external service deadline and app quit timer.
+The fast 0.315s graceful stop is consistent with systemd continuing a stopped
+process during shutdown, allowing the new event-driven signal wakeup to run.
+This does not replace the separately proven immediate kill route.

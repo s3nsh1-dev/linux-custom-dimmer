@@ -1,2 +1,4 @@
-"""Stage 1 entry point. No product UI and no overlay."""
-print("Stage 1 foundation is ready. Product UI is not built; run Stage 2 next.")
+"""Private service entry point; the public launcher enforces single-instance ownership."""
+from linux_custom_dimmer.app import main
+
+raise SystemExit(main())

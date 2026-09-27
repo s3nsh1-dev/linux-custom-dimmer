@@ -139,6 +139,8 @@ class Controller:
                     "DBUS_SESSION_BUS_ADDRESS",
                     "XDG_SESSION_TYPE",
                     "XDG_CURRENT_DESKTOP",
+                    "XDG_DATA_HOME",
+                    "XDG_ACTIVATION_TOKEN",
                     "LANG",
                     "LC_ALL",
                 )
@@ -147,6 +149,28 @@ class Controller:
             environment["QT_QPA_PLATFORM"] = "wayland"
             self.backend.start(self.identity, token, environment, runtime_limit)
             return "Launched"
+
+
+def show_application(owner, send=None, wait_seconds=3):
+    from .ipc import request
+
+    send = send or request
+    deadline = time.monotonic() + wait_seconds
+    while True:
+        # Recheck service identity on each attempt; never signal or replace it
+        # when its GUI does not answer. Recovery remains a separate CLI action.
+        with owner.backend.pinned(owner.identity.unit) as properties:
+            if properties is None:
+                raise RecoveryError("Application exited during launch; check its user-service log")
+            owner.verify(properties)
+        try:
+            return send(owner.directory / "control.sock", {"action": "show"}, timeout=1)
+        except (OSError, RuntimeError) as error:
+            if time.monotonic() >= deadline:
+                raise RecoveryError(
+                    "Application did not respond; use bin/dimmer --kill to recover"
+                ) from error
+            time.sleep(0.05)
 
 
 def parse_action(argv=None):
@@ -167,7 +191,11 @@ def main(argv=None):
     try:
         root = Path(__file__).resolve().parents[2]
         runtime = Path(os.environ.get("XDG_RUNTIME_DIR", f"/run/user/{os.getuid()}"))
-        print(Controller(Identity(root), runtime, Systemd()).perform(action))
+        owner = Controller(Identity(root), runtime, Systemd())
+        result = owner.perform(action)
+        if action == "launch":
+            show_application(owner)
+        print(result)
         return 0
     except (RecoveryError, OSError) as error:
         print(f"dimmer: {error}", file=__import__("sys").stderr)

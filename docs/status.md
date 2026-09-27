@@ -5,8 +5,9 @@ Updated: 2026-09-27.
 ## Current stage
 
 Stage 2 is in progress on `stage-2-app`. Native controls and the raster overlay
-pass 114 default tests and the first short real-app rendering probe. Session
-guards and local integration are implemented; full acceptance is in progress.
+pass 120 default tests and seven real-app lifecycle/recovery tests. Session
+guards and local integration are implemented; hands-on acceptance and resource
+measurements are in progress.
 The owner requires ordinary-account development and runtime with minimal
 privileges. No sudo or system package installation was used.
 
@@ -19,7 +20,9 @@ Current branch: `stage-2-app`, from Stage 1 handoff `ff28a31`.
 - `68c22cf` — independent launch/recovery, unit identity checks, live process tests.
 - `a8ccdec` — state contract, bounded unmapped probe, and Stage 1 handoff.
 - `0812c8e` — final review fixes and failure-path regression tests.
-- Final documentation commit follows `0812c8e`; use `git log --oneline -6`.
+- `ff28a31` — Stage 1 completion record.
+- `ba108e0` — native overlay and controls, rendering and UI tests.
+- Lifecycle, local IPC, menu/shortcut integration checkpoint follows `ba108e0`.
 
 No remote, push, publication, or release tag exists. Open-source distribution
 remains the owner's later decision. Build output and downloaded tools are ignored.
@@ -48,7 +51,7 @@ setuptools 82.0.1, iniconfig 2.3.0, pluggy 1.6.0, inside `.venv` only.
 The downloaded development packages match the installed Ubuntu runtime versions.
 No system packages were installed or changed; no plugin is needed.
 
-## Results and integration
+## Stage 1 results (historical)
 
 - Rootless setup and repeat setup passed. Strict native compile, Qt imports,
   Python compilation, Ruff, formatting, and 72 default tests passed. Plain pytest also passed 72, with 5 live cases skipped.
@@ -62,16 +65,38 @@ No system packages were installed or changed; no plugin is needed.
 - The main Stage 1 service entry point prints an explanatory line and exits.
   `bin/dimmer --stop` and `--kill` are independent of Qt and the venv.
 
-The only persistent application-specific runtime files are private ownership and
-lock files under `$XDG_RUNTIME_DIR/linux-custom-dimmer/`. Test runs create
+Stage 1 left private ownership and lock files under
+`$XDG_RUNTIME_DIR/linux-custom-dimmer/`. Test runs create
 similarly private directories named for their disposable units; this session
 removed those after confirming their services were absent. Logout removes
 runtime files. They are not processes or startup registrations.
-No permanent application menu entry, shortcut, installed user unit, autostart,
-or root service exists. The KDE test temporarily used
+At that handoff no permanent application menu entry or shortcut existed.
+The KDE test temporarily used
 `~/.local/share/kglobalaccel/linux-custom-dimmer-stage1-probe.desktop` and removed
 it. Final inventory confirms zero dimmer/test units and zero dimmer timers;
 no dimmer, sentinel, or probe remains running.
+
+## Stage 2 implementation and current evidence
+
+- Native controls: Stopped at 50%, range 0–80%, explicit Start/Stop, zero-stop,
+  immediate emergency quit and close cleanup. Raster layer paints on demand.
+- Lock/suspend/output notifications stop the layer and never restart it.
+  Start verifies session state, native bridge, service identity, installed
+  emergency command, and the active shortcut assignment.
+- Private bounded Unix socket handles fixed validated actions; relaunch shows
+  the existing window. Qt-free recovery remains independent of this socket.
+- Installed user menu entries `linux-custom-dimmer.desktop` and
+  `linux-custom-dimmer-emergency.desktop`, plus Ctrl+Alt+Shift+D through KDE.
+  No system packages, system services, autostart, or extra daemon were added.
+- `scripts/check`: 120 passed, 12 live tests deselected. The tool sandbox needs
+  its ordinary-user escape to allow local Unix sockets; this is not sudo.
+- `DIMMER_APP_TESTS=1 .venv/bin/python3 -m pytest -q -s tests/integration/test_app.py`:
+  seven passed. Each app expires after 15 seconds and has an inner quit timer.
+  Frozen app recovery: KDE command 0.256s, menu command 0.588s, graceful stop
+  0.315s. Sentinel survived. Quit, SIGTERM, SIGKILL, duplicate launches and
+  zero/Stop cleanup passed. These prove command dispatch, not physical key input.
+- Earlier 20-second probe: 50/65/80% each active, one paint per change, no idle
+  repaint; 0% removed the layer. Every test ended with its service absent.
 
 Raw native diagnostics and setup output remain under ignored `.local/`.
 See `docs/verification.md` for actual results and limitations, and
@@ -79,8 +104,8 @@ See `docs/verification.md` for actual results and limitations, and
 
 ## Remaining work and next action
 
-Continue authorized Stage 2 Tasks 4–6. Finish launch/show behavior and live
-acceptance for the implemented controls, lifecycle guards and emergency route.
+Continue authorized Stage 2 Tasks 4–6. Finish live acceptance for the
+implemented controls, lifecycle guards and emergency route.
 Verify visible neutrality, input passing, frozen-app key recovery, desktop
 lifecycle behavior, and final idle/video resource use. No product release or
 `v0.1.0` tag is justified by Stage 1 checks.

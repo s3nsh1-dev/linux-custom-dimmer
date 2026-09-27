@@ -1,0 +1,13 @@
+#!/usr/bin/python3 -I
+"""Install only current-user launchers and the independent emergency shortcut."""
+
+import sys
+from pathlib import Path
+
+root = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(root / "src"))
+from linux_custom_dimmer.integration import Integration  # noqa: E402
+
+Integration(root).install()
+print("Installed Linux Custom Dimmer and emergency stop in the application menu.")
+print("Emergency shortcut: Ctrl+Alt+Shift+D")

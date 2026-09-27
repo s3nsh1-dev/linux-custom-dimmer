@@ -5,7 +5,13 @@ from pathlib import Path
 
 import pytest
 
-from linux_custom_dimmer.control import Controller, Identity, RecoveryError, parse_action
+from linux_custom_dimmer.control import (
+    Controller,
+    Identity,
+    RecoveryError,
+    parse_action,
+    show_application,
+)
 
 
 class FakeManager:
@@ -158,3 +164,32 @@ def test_control_does_not_import_qt():
         check=False,
     )
     assert result.returncode == 0, result.stderr
+
+
+def test_relaunch_shows_only_verified_owned_socket(fixture):
+    control, backend = fixture
+    control.perform("launch")
+    sent = []
+
+    def send(path, payload, timeout):
+        sent.append((path, payload))
+        return {"ok": True, "status": {"state": "Active"}}
+
+    show_application(control, send=send)
+    assert sent == [(control.directory / "control.sock", {"action": "show"})]
+    backend.unit["Description"] = "unrelated"
+    with pytest.raises(RecoveryError):
+        show_application(control, send=send)
+    assert len(sent) == 1
+
+
+def test_ipc_timeout_never_launches_a_second_instance(fixture):
+    control, backend = fixture
+    control.perform("launch")
+
+    def frozen(*args, **kwargs):
+        raise TimeoutError("frozen")
+
+    with pytest.raises(RecoveryError, match="did not respond"):
+        show_application(control, send=frozen, wait_seconds=0)
+    assert len(backend.calls) == 1

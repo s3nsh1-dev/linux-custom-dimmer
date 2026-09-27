@@ -1,0 +1,18 @@
+#!/usr/bin/python3 -I
+"""Stop the verified app, then remove only this checkout's desktop integration."""
+
+import os
+import sys
+from pathlib import Path
+
+root = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(root / "src"))
+from linux_custom_dimmer.control import Controller, Identity  # noqa: E402
+from linux_custom_dimmer.integration import Integration  # noqa: E402
+from linux_custom_dimmer.service import Systemd  # noqa: E402
+
+integration = Integration(root)
+integration.check_files()
+Controller(Identity(root), Path(os.environ["XDG_RUNTIME_DIR"]), Systemd()).perform("stop")
+integration.uninstall()
+print("Removed this checkout's application entries and emergency shortcut.")
