@@ -64,69 +64,69 @@ match the table; create each when its task needs it.
 
 ### Task 1: establish the reproducible project
 
-- [ ] Inspect this folder and applicable instructions. Verify that Git operations
+- [x] Inspect this folder and applicable instructions. Verify that Git operations
   target this project, not its parent. Preserve any existing user changes.
-- [ ] Initialize local Git only if absent. Add a focused ignore file for `.venv`,
+- [x] Initialize local Git only if absent. Add a focused ignore file for `.venv`,
   `build`, `dist`, bytecode, tool caches, raw profiling output, and local secrets.
   Make a first documentation commit using explicit paths.
-- [ ] Create `pyproject.toml` with package metadata, version `0.1.0.dev0`, pytest
+- [x] Create `pyproject.toml` with package metadata, version `0.1.0.dev0`, pytest
   and Ruff configuration, and a documented distro-provided PyQt6 requirement.
-- [ ] Prepare a project virtual environment that can import the installed PyQt6.
+- [x] Prepare a project virtual environment that can import the installed PyQt6.
   Keep developer-only tools there; do not install a competing Qt from pip.
-- [ ] Verify Python, PyQt6, Qt, LayerShellQt, compiler, build tool, Wayland, and
+- [x] Verify Python, PyQt6, Qt, LayerShellQt, compiler, build tool, Wayland, and
   user-service versions. Install only missing required dependencies through the
   appropriate package mechanism, honoring environment permissions. Record all
   installation locations and exact reproducible commands.
-- [ ] Implement an idempotent `scripts/setup-dev` and `scripts/check`. The latter
+- [x] Implement an idempotent `scripts/setup-dev` and `scripts/check`. The latter
   runs the native build, Python import/compile checks, Ruff, and existing tests.
   It must not start a live overlay or change desktop settings.
-- [ ] Document the initial run/build/recovery contract in README and update status.
+- [x] Document the initial run/build/recovery contract in README and update status.
   Commit `chore: prepare native development environment` after these checks pass.
 
 ### Task 2: prove independent, scoped recovery
 
-- [ ] Establish `bin/dimmer` command semantics: no arguments launches/shows the
+- [x] Establish `bin/dimmer` command semantics: no arguments launches/shows the
   app, `--stop` requests service shutdown, and `--kill` terminates only the
   verified dimmer unit. Keep this CLI independent of Qt imports and the GUI loop.
-- [ ] Define a fixed application identity and trusted expected executable path.
+- [x] Define a fixed application identity and trusted expected executable path.
   Verify service identity before every destructive operation; reject collisions.
   Use argument arrays or D-Bus calls, never interpolated shell command strings.
-- [ ] In `tests/test_control.py`, write behavior tests first for unit collisions,
+- [x] In `tests/test_control.py`, write behavior tests first for unit collisions,
   missing units, duplicate launches, paths containing spaces, and rejection of
   unexpected arguments. Assert that no stop/kill call targets an unrelated unit.
-- [ ] Implement transient user-service launch and lifecycle properties from the
+- [x] Implement transient user-service launch and lifecycle properties from the
   spec. Do not enable a startup service or change other services.
-- [ ] Use a harmless dummy program to verify normal stop and forced termination.
+- [x] Use a harmless dummy program to verify normal stop and forced termination.
   Freeze only this owned dummy with SIGSTOP; prove the external recovery command
   ends it within a documented timeout. Run an unrelated disposable sentinel and
   assert it survives. Verify that no test units or child processes remain.
-- [ ] Determine and document the supported KDE mechanism for binding a global
+- [x] Determine and document the supported KDE mechanism for binding a global
   shortcut to an external command. Check availability and collision handling.
   Do not substitute a callback that depends on the app's own event loop. Record
   installation/removal paths; final binding is part of Stage 2 integration.
-- [ ] Commit `feat: add isolated launch and emergency recovery` with test results.
+- [x] Commit `feat: add isolated launch and emergency recovery` with test results.
 
 ### Task 3: prepare native integration and the build handoff
 
-- [ ] Build the narrow adapter against matching system Qt6 and LayerShellQt
+- [x] Build the narrow adapter against matching system Qt6 and LayerShellQt
   headers. Its only job is configuring a caller-owned live Qt window as the
   overlay. Export an unmangled interface, return explicit error status, and
   require main-thread calls and matching runtime libraries.
-- [ ] Keep adapter loading separate from rendering. Test missing library and
+- [x] Keep adapter loading separate from rendering. Test missing library and
   unsupported-session paths without creating any visible window. They must
   leave the application Stopped.
-- [ ] If a live probe is needed to validate the adapter, use a short preview with
+- [x] If a live probe is needed to validate the adapter, use a short preview with
   a separate externally scheduled recovery deadline. No persistent settings,
   full-black surface, or long unattended experiment. Log the result and remove
   every preview process/timer afterward.
-- [ ] Create the initial pure state contract for Stage 2: `STOPPED`/`ACTIVE`,
+- [x] Create the initial pure state contract for Stage 2: `STOPPED`/`ACTIVE`,
   selected opacity 0..80, and idempotent stop. Do not build the complete UI yet.
   Pin invalid-input handling and zero-opacity behavior with a focused test.
-- [ ] Record unresolved failures accurately. Update the issue log and status
+- [x] Record unresolved failures accurately. Update the issue log and status
   with exact development commands, compatibility findings, local installation
   changes, Git commits, and the next task. The handoff must require no previous
   chat history or files in `/tmp`.
-- [ ] Commit the native foundation and handoff. Run `scripts/check`, inspect
+- [x] Commit the native foundation and handoff. Run `scripts/check`, inspect
   Git status, and verify no dimmer process is running. Stage 1 is ready only
   when the build and dummy recovery work; do not hide a blocked prerequisite.
 

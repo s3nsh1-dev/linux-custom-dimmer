@@ -1,7 +1,7 @@
 # Stage 1 verification
 
-Date: 2026-09-27. Branch: `stage-1-foundation`. Code revisions are listed in
-`docs/status.md`; this file records observations, not Stage 2 acceptance.
+Date: 2026-09-27. Branch: `stage-1-foundation`. Final tested code: `0812c8e`, with later documentation-only completion.
+Earlier checkpoints are listed in `docs/status.md`; this file records observations, not Stage 2 acceptance.
 
 ## Environment and installs
 

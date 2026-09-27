@@ -1,6 +1,6 @@
 # Linux custom dimmer: project scope
 
-Date: 2026-09-27. Status: approved product direction; Stage 1 foundation underway.
+Date: 2026-09-27. Status: approved product direction; Stage 1 foundation complete; product implementation is Stage 2.
 
 Build a small Python desktop app that makes this laptop's screen visibly darker
 than the normal brightness slider can, without adding a red or yellow tint.

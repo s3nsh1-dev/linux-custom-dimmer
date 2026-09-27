@@ -4,8 +4,8 @@ Updated: 2026-09-27.
 
 ## Current stage
 
-Stage 1 implementation and checks passed; final review and documentation commit
-are in progress. Product UI is intentionally absent. No overlay was displayed.
+Stage 1 is complete and ready for `build the app`. Independent review findings
+are fixed and verified. Product UI is intentionally absent. No overlay was displayed.
 The owner requires ordinary-account development and runtime with minimal
 privileges. No sudo or system package installation was used.
 
@@ -16,7 +16,9 @@ Branch: `stage-1-foundation`, in the requested project directory.
 - `a5a8a67` — initial agreed scope and evidence.
 - `35dadec` — rootless development environment, matching headers, native adapter.
 - `68c22cf` — independent launch/recovery, unit identity checks, live process tests.
-- State contract and Stage 1 handoff are awaiting their final local commit.
+- `a8ccdec` — state contract, bounded unmapped probe, and Stage 1 handoff.
+- `0812c8e` — final review fixes and failure-path regression tests.
+- Final documentation commit follows `0812c8e`; use `git log --oneline -6`.
 
 No remote, push, publication, or release tag exists. Open-source distribution
 remains the owner's later decision. Build output and downloaded tools are ignored.
@@ -48,11 +50,11 @@ No system packages were installed or changed; no plugin is needed.
 ## Results and integration
 
 - Rootless setup and repeat setup passed. Strict native compile, Qt imports,
-  Python compilation, Ruff, formatting, and 64 default tests passed.
-- Four live service tests passed. Frozen dummy plus child stopped in 2.473s;
-  independent kill took 0.471s. Unrelated sentinel survived. Concurrency,
+  Python compilation, Ruff, formatting, and 72 default tests passed. Plain pytest also passed 72, with 5 live cases skipped.
+- Four live service tests passed. Frozen dummy plus child stopped in 2.315s;
+  independent kill took 0.272s. Unrelated sentinel survived. Concurrency,
   wrong-identity refusal, and automatic external deadline were verified.
-- KDE command test passed in 0.213s. Ctrl+Alt+Shift+D was available, but no key
+- KDE command test passed in 0.127s after the review fixes. Ctrl+Alt+Shift+D was available, but no key
   was bound. Temporary desktop file and registration were removed.
 - Native probe succeeded in 516ms with only unmapped windows. It had a Qt timer
   and an independent systemd deadline. No pixels or dimming were displayed.
@@ -60,13 +62,15 @@ No system packages were installed or changed; no plugin is needed.
   `bin/dimmer --stop` and `--kill` are independent of Qt and the venv.
 
 The only persistent application-specific runtime files are private ownership and
-lock files under `$XDG_RUNTIME_DIR/linux-custom-dimmer/`. Test runs also create
-similarly private directories named for their disposable units. Logout removes
+lock files under `$XDG_RUNTIME_DIR/linux-custom-dimmer/`. Test runs create
+similarly private directories named for their disposable units; this session
+removed those after confirming their services were absent. Logout removes
 runtime files. They are not processes or startup registrations.
 No permanent application menu entry, shortcut, installed user unit, autostart,
 or root service exists. The KDE test temporarily used
 `~/.local/share/kglobalaccel/linux-custom-dimmer-stage1-probe.desktop` and removed
-it. All current units were confirmed absent after the smoke test.
+it. Final inventory confirms zero dimmer/test units and zero dimmer timers;
+no dimmer, sentinel, or probe remains running.
 
 Raw native diagnostics and setup output remain under ignored `.local/`.
 See `docs/verification.md` for actual results and limitations, and
@@ -74,8 +78,7 @@ See `docs/verification.md` for actual results and limitations, and
 
 ## Remaining work and next action
 
-Finish final review and commit this handoff. Then `build the app` authorizes
-Stage 2 Tasks 4–6. Implement the Qt raster overlay and native controls, require
+Next instruction: `build the app`. That authorizes Stage 2 Tasks 4–6. Implement the Qt raster overlay and native controls, require
 support/recovery preflight before activation, add lifecycle cleanup and show
 IPC, and install the actual independent emergency shortcut/menu entry.
 Verify visible neutrality, input passing, frozen-app key recovery, desktop
