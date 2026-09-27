@@ -4,14 +4,15 @@ Updated: 2026-09-27.
 
 ## Current stage
 
-Stage 1 is complete and ready for `build the app`. Independent review findings
-are fixed and verified. Product UI is intentionally absent. No overlay was displayed.
+Stage 2 is in progress on `stage-2-app`. Native controls and the raster overlay
+pass 114 default tests and the first short real-app rendering probe. Session
+guards and local integration are implemented; full acceptance is in progress.
 The owner requires ordinary-account development and runtime with minimal
 privileges. No sudo or system package installation was used.
 
 ## Local history
 
-Branch: `stage-1-foundation`, in the requested project directory.
+Current branch: `stage-2-app`, from Stage 1 handoff `ff28a31`.
 
 - `a5a8a67` — initial agreed scope and evidence.
 - `35dadec` — rootless development environment, matching headers, native adapter.
@@ -78,9 +79,8 @@ See `docs/verification.md` for actual results and limitations, and
 
 ## Remaining work and next action
 
-Next instruction: `build the app`. That authorizes Stage 2 Tasks 4–6. Implement the Qt raster overlay and native controls, require
-support/recovery preflight before activation, add lifecycle cleanup and show
-IPC, and install the actual independent emergency shortcut/menu entry.
+Continue authorized Stage 2 Tasks 4–6. Finish launch/show behavior and live
+acceptance for the implemented controls, lifecycle guards and emergency route.
 Verify visible neutrality, input passing, frozen-app key recovery, desktop
 lifecycle behavior, and final idle/video resource use. No product release or
 `v0.1.0` tag is justified by Stage 1 checks.

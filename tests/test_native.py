@@ -7,16 +7,15 @@ import pytest
 
 os.environ["QT_QPA_PLATFORM"] = "offscreen"
 from PyQt6 import sip
-from PyQt6.QtGui import QGuiApplication, QWindow
+from PyQt6.QtGui import QWindow
 
 from linux_custom_dimmer.native import NativeBridge, NativeError
 from linux_custom_dimmer.support import SupportError, check_session
 
 
 @pytest.fixture(scope="module")
-def app():
-    instance = QGuiApplication.instance() or QGuiApplication([])
-    yield instance
+def app(qt_app):
+    yield qt_app
 
 
 def test_missing_library_fails_before_any_surface(tmp_path):

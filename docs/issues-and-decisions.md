@@ -202,3 +202,31 @@ desktop cleanup still ran. The final live suite passed all five cases, with
 normal stop 2.315s, immediate kill 0.272s, and KDE recovery 0.127s. The final
 default suite passed 72 tests. No review finding remains deferred. See the
 review-fix commit in `docs/status.md`.
+
+## 2026-09-27: Stage 2 rendering and first live checks
+
+The overlay now uses QBackingStore and source-composition black with validated
+alpha. Source composition replaces pixels, so repainting does not accumulate
+darkness. Active state follows the first completed paint. An exposure deadline
+fails closed if the compositor never exposes the surface. Static overlays have
+no repeating timer; stop destroys the backing store and native surface.
+
+The control window starts Stopped at 50%. Offscreen tests verify slider/start/
+stop/zero/close/emergency transitions, invalid opacity, and failure cleanup.
+The first bounded real-app probe passed at 50%, 65%, and 80%, with paint counts
+1, 2, and 3 and no additional paints while idle. Zero removed the overlay.
+The app had an inner quit timer and a 20-second systemd runtime deadline.
+
+Two real-environment issues were caught before dimming. PyQt's dynamic QObject
+property lookup returned None for PreparingForSleep; explicit D-Bus Properties.Get
+returned the correct boolean. KDE accepted the shortcut key but left its action
+inactive with NoAutoloading alone. Adding SetPresent activated it, verified by
+querying both the assigned key and component state. Failed installs rolled back
+their files and registration; unavailable checks left the app Stopped.
+
+Only two owned files were installed under the user's applications directory:
+linux-custom-dimmer.desktop and linux-custom-dimmer-emergency.desktop. The latter
+also supplies the independent KDE command shortcut. No root access, extra daemon,
+system unit, autostart or global shell integration was added. Physical key and
+interaction acceptance, final lifecycle tests and resource measurements remain
+in progress. See the Stage 2 commits in status.
