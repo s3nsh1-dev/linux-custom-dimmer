@@ -1,6 +1,6 @@
 # Linux custom dimmer: project scope
 
-Date: 2026-09-27. Status: approved product direction; implementation has not started.
+Date: 2026-09-27. Status: approved product direction; Stage 1 foundation underway.
 
 Build a small Python desktop app that makes this laptop's screen visibly darker
 than the normal brightness slider can, without adding a red or yellow tint.
@@ -55,6 +55,12 @@ Use Python 3, PyQt6, Qt Widgets for the control window, and a Qt raster window
 with LayerShellQt for the overlay. Use Ubuntu's compatible Qt/PyQt6/layer-shell
 packages, not a second pip-bundled Qt runtime. Development tools can live in a
 project `.venv` created with access to the distro's Python packages.
+
+The owner clarified during Stage 1 that development and runtime must work from
+the ordinary user account with as few privileges as practical. Keep build tools
+and matching development headers project-local when system installation would
+need an admin account. Publishing or open-source distribution is undecided;
+do not publish, push, or add distribution work without a later instruction.
 
 The application code should be Python. If no supported Python binding exposes
 the needed LayerShellQt calls, use one small C++ adapter built against the
@@ -234,7 +240,8 @@ tests, measure resources, supply local launch and uninstall instructions, update
 the issue/decision records and status, and commit the finished work. Do not
 restart the requirements discussion or add unrelated features. Normal tool
 permissions still apply, and genuinely missing access must be reported rather
-than bypassed. No implementation work is requested in the current docs-only step.
+than bypassed. The original scope handoff was documentation-only; the later
+base-setup prompt authorizes Stage 1 implementation.
 
 See [the implementation plan](docs/superpowers/plans/2026-09-27-linux-custom-dimmer.md)
 for tasks and completion criteria, and [the evidence and issue log](docs/issues-and-decisions.md)

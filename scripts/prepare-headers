@@ -11,9 +11,7 @@ PAIRS = {
     "liblayershellqtinterface-dev": "liblayershellqtinterface6",
 }
 versions = {
-    dev: subprocess.check_output(
-        ["dpkg-query", "-W", "-f=${Version}", runtime], text=True
-    ).strip()
+    dev: subprocess.check_output(["dpkg-query", "-W", "-f=${Version}", runtime], text=True).strip()
     for dev, runtime in PAIRS.items()
 }
 cache = ROOT / ".local/debs"

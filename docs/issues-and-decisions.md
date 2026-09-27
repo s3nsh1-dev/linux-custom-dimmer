@@ -100,5 +100,81 @@ by reliable recovery and compatible native integration; keep their scope narrow.
 - [systemd process termination](https://www.freedesktop.org/software/systemd/man/latest/systemd.kill.html) describes service-scoped termination. Also read the installed `systemd.kill` and `systemd.service` manual pages during setup.
 - [KDE idle dimming implementation](https://raw.githubusercontent.com/KDE/powerdevil/Plasma/6.6/daemon/actions/bundled/dimdisplay.cpp) requests a ratio of the current brightness; this is not proof of additional software dimming on this panel.
 
-No app code, dependencies, desktop integration, or Git repository has been
-created by this documentation step. There are no implementation commits yet.
+At the original documentation handoff, no app code, dependencies, desktop
+integration, or Git repository had been created. Stage 1 work follows below.
+
+## 2026-09-27: ordinary-account development and native headers
+
+Symptom: CMake, Ninja, venv's ensurepip bundle, Qt development headers, and
+LayerShellQt headers were absent. The runtime packages were already compatible.
+The first proposal used system-wide APT installation, which needs an admin
+account. `sudo -n true` was denied. No privileged install was attempted.
+
+The user clarified that development and running must work in the ordinary
+account, and requested the least privileges practical. This is now a project
+requirement. Sharing/open-source distribution is undecided; keep Git local.
+
+Fix: use existing distro pip through a `--system-site-packages --without-pip`
+venv, with pinned developer tools inside it. Read installed runtime package
+versions and use `apt-get download` plus `dpkg-deb -x` for matching headers
+inside ignored `.local/`. No maintainer scripts or system installs run.
+CMake links the three existing runtime libraries directly. It avoids Qt's
+broader CMake package dependency checks for unused OpenGL/Vulkan/qmake tooling.
+No copied Qt runtime or private C++ symbol lookup is used.
+
+Verification: rootless setup and its repeat completed; the adapter compiled,
+`ldd` resolved system libraries, and all 64 default tests passed. Future setup
+after a system Qt update must download matching headers again; unavailable
+archive versions fail explicitly. See the environment foundation commit in
+`docs/status.md`.
+
+## 2026-09-27: service identity and recovery proof
+
+Decision: use distro dbus-python for typed systemd calls. A fixed executable
+and argument list, a project-path digest, safety properties, and an owner-only
+random token must all match. Reject absent/stale ownership for existing units.
+Hold a manager unit reference while inspecting and signalling so the unit
+cannot be garbage-collected and replaced under the same name. Serialize project
+launchers with a bounded owner-only file lock. The CLI accepts no target override.
+
+The system Python recovery CLI does not need Qt or a working venv. Only the
+service app uses the venv. This minimizes recovery dependencies. A duplicate
+Stage 1 launch reports Already running; showing an existing UI awaits Stage 2.
+
+Verification: mocked-boundary safety tests plus real temporary services proved
+collisions are refused, concurrent launches do not stack, frozen parent/child
+cleanup works, and an unrelated sentinel survives. Stop 2.473s; kill 0.471s.
+An independent systemd runtime limit also removed a frozen dummy. Existing
+degraded services were left alone. Runtime test deadlines add no permanent daemon.
+See the recovery foundation commit in `docs/status.md`.
+
+## 2026-09-27: native compile and protocol-query corrections
+
+The first native build rejected a plain bitwise OR of LayerShellQt anchor enums
+because it produced an int. Use an explicit `Window::Anchors` value before
+combining flags. The strict-warning build then passed.
+
+The installed wayland-info pads columns, unlike the initial parser fixture.
+The protocol preflight incorrectly rejected a supported compositor. Captured
+its real output in a failing regression test, then accepted whitespace around
+the protocol/version fields. Test and live preflight passed.
+
+Native loading verifies bridge ABI and exact Qt compile/runtime versions. Python
+holds the GIL and a live QWindow reference, rejects a deleted object or wrong
+thread, and the C++ bridge repeats thread/platform/version checks. The bridge
+retains no window pointer. Caller cleanup after later surface failures remains
+part of the Stage 2 overlay controller. See the native foundation commit in status.
+
+## 2026-09-27: KDE recovery route and unmapped probe
+
+KDE command dispatch was proven through a temporary desktop action with no key
+bound. Its independently launched command killed a frozen owned dummy in 0.213s
+and left the sentinel alive. Removed the registration and file and verified
+NoSuchComponent. Ctrl+Alt+Shift+D was free; recheck at Stage 2 installation.
+Physical key delivery and permanent menu integration remain Stage 2 acceptance.
+
+The native probe configured and created only unmapped windows, then destroyed
+them. Its own timer and an independent systemd deadline bounded the experiment.
+This avoided another visual preview during base setup. Do not infer input
+transparency or layer stacking from this probe. Those need the actual rendered
+app and live acceptance tests. Details are in `docs/verification.md`.

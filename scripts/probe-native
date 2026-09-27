@@ -1,0 +1,13 @@
+#!/bin/bash
+# No pixels are drawn. The service manager enforces the deadline outside Qt.
+set -euo pipefail
+cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.."
+mkdir -p .local
+systemd-run --user --wait --collect --unit=linux-custom-dimmer-native-probe.service \
+    --property=Type=exec --property=Restart=no --property=KillMode=control-group \
+    --property=RuntimeMaxSec=5s --property=TimeoutStopSec=1s --property=SendSIGKILL=yes \
+    --setenv=WAYLAND_DISPLAY --setenv=XDG_RUNTIME_DIR --setenv=XDG_SESSION_TYPE \
+    --setenv=XDG_CURRENT_DESKTOP --setenv=QT_QPA_PLATFORM=wayland --setenv=WAYLAND_DEBUG=1 \
+    --property="StandardOutput=append:$PWD/.local/native-probe.log" \
+    --property="StandardError=append:$PWD/.local/native-probe.log" \
+    "$PWD/.venv/bin/python3" -I "$PWD/tests/integration/native_probe.py"
