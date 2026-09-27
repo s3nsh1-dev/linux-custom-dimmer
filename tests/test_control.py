@@ -131,6 +131,16 @@ def test_cli_has_only_fixed_actions():
     assert parse_action(["--kill"]) == "kill"
 
 
+@pytest.mark.parametrize("state", ["inactive", "failed", "deactivating"])
+def test_loaded_but_not_running_unit_requests_retry_without_restarting(fixture, state):
+    control, backend = fixture
+    control.perform("launch")
+    backend.unit["ActiveState"] = state
+    with pytest.raises(RecoveryError, match="retry"):
+        control.perform("launch")
+    assert len(backend.calls) == 1
+
+
 def test_control_does_not_import_qt():
     import subprocess
     import sys

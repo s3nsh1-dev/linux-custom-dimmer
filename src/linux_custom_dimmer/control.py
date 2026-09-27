@@ -122,7 +122,10 @@ class Controller:
             if existing is not None:
                 self.verify(existing)
                 if action == "launch":
-                    return "Already running"
+                    state = existing.get("ActiveState", "unknown")
+                    if state in {"active", "activating"}:
+                        return "Already running"
+                    raise RecoveryError(f"Service is {state}; wait for cleanup and retry launch")
                 self.backend.stop(self.identity.unit, action == "kill")
                 return "Stopped"
             if action != "launch":

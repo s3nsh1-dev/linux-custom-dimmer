@@ -31,11 +31,11 @@ LayerShellQt to `/usr/lib/x86_64-linux-gnu/`, with no missing dependencies.
 | Command/check | Observation |
 | --- | --- |
 | `scripts/setup-dev` | Rootless setup, editable installation and full checks passed; repeat run passed. |
-| `scripts/check` | Native build, matching Qt import, bytecode compilation, Ruff and formatting passed; 64 tests passed, 5 opt-in live cases deselected. |
+| `scripts/check` | Final native build, matching Qt import, bytecode compilation, Ruff and formatting passed; 72 tests passed, 5 opt-in live cases deselected. |
 | `DIMMER_LIVE_TESTS=1 .venv/bin/python3 -m pytest -q -s tests/integration/test_recovery.py` | 4 passed. Frozen dummy and its child removed; independent sentinel survived with unchanged PID/start time. Concurrent launch yielded one service; wrong identity refused. External runtime deadline terminated frozen dummy. |
-| Frozen dummy normal stop | 2.473 seconds, target below 3 seconds. Dummy ignores SIGTERM, so this exercises forced escalation. |
-| Frozen dummy immediate kill | 0.471 seconds including starting a separate Python recovery process, target below 1 second. |
-| `DIMMER_KDE_TESTS=1 .venv/bin/python3 -m pytest -q -s tests/integration/test_kde_route.py` | 1 passed. KDE dispatched an independent command and terminated frozen dummy in 0.213 seconds; sentinel survived. |
+| Frozen dummy normal stop | Initial 2.473 seconds; final retest 2.315 seconds. Target below 3 seconds. Dummy ignores SIGTERM, exercising escalation. |
+| Frozen dummy immediate kill | Initial 0.471 seconds; final retest 0.272 seconds including a separate Python recovery process. Target below 1 second. |
+| `DIMMER_KDE_TESTS=1 .venv/bin/python3 -m pytest -q -s tests/integration/test_kde_route.py` | Passed initially and after review fixes. Initial KDE recovery 0.213 seconds, final 0.127 seconds. Sentinel survived. |
 | Shortcut availability | `Ctrl+Alt+Shift+D` available at check time. Probe bound no key. |
 | `scripts/probe-native` | Success, 516 ms service lifetime. GUI-thread adapter configured an unmapped QWindow, rejected configuring it after native creation, and destroyed both probe windows. No pixels drawn. |
 | Native probe deadline | Qt timer 250 ms; systemd RuntimeMaxSec=5 plus TimeoutStopSec=1, outside Qt process group. Service completed normally before deadline. |
@@ -62,6 +62,12 @@ Default tests never connect to the live desktop or signal services.
 - New behavior tests initially failed because their modules did not yet exist;
   implementation and subsequent complete checks passed. No failed check was
   treated as success.
+- Independent review identified failure-path cleanup and stale-unit reporting
+  issues. Added eight regression cases and fixed both. A live refactor retest
+  caught an incorrect KDE interface spelling; corrected it, then all five
+  opt-in tests passed together. The temporary desktop file was removed even
+  during the failed run. Final `scripts/check`: 72 passed. Plain `pytest`: 72
+  passed, 5 explicitly skipped live cases. Review fixes are separately committed.
 
 ## Limits of this stage
 

@@ -4,6 +4,7 @@ import os
 import subprocess
 import time
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import ExitStack
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -11,6 +12,7 @@ import pytest
 
 from linux_custom_dimmer.control import Controller, Identity, RecoveryError
 from linux_custom_dimmer.service import Systemd
+from tests.integration.resources import sentinel_process
 
 pytestmark = [
     pytest.mark.live,
@@ -54,9 +56,9 @@ def process_identity(pid):
 def test_frozen_service_recovery_and_unrelated_sentinel(action, limit):
     identity = DummyIdentity(ROOT, f"linux-custom-dimmer-test-{os.getpid()}.service")
     ctl = controller(identity)
-    sentinel = subprocess.Popen(["/usr/bin/sleep", "30"])
-    sentinel_start = process_identity(sentinel.pid)[1]
-    try:
+    with sentinel_process() as sentinel, ExitStack() as cleanup:
+        sentinel_start = process_identity(sentinel.pid)[1]
+        cleanup.callback(ctl.perform, "kill")
         ctl.perform("launch", runtime_limit=10)
 
         def frozen():
@@ -96,10 +98,6 @@ def test_frozen_service_recovery_and_unrelated_sentinel(action, limit):
         assert sentinel.poll() is None
         assert process_identity(sentinel.pid)[1] == sentinel_start
         print(f"{action}: {elapsed:.3f}s, frozen parent/child removed, sentinel survived")
-    finally:
-        ctl.perform("kill")
-        sentinel.terminate()
-        sentinel.wait(timeout=3)
 
 
 def test_concurrent_launch_and_real_unit_collision():

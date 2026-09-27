@@ -3,11 +3,13 @@
 import os
 import subprocess
 import time
+from contextlib import ExitStack
 from pathlib import Path
 
 import dbus
 import pytest
 
+from tests.integration.resources import sentinel_process, temporary_desktop
 from tests.integration.test_recovery import (
     ROOT,
     DummyIdentity,
@@ -41,29 +43,34 @@ def test_kde_launches_independent_recovery_for_frozen_dummy():
     component = "linux-custom-dimmer-stage1-probe.desktop"
     data = Path(os.environ.get("XDG_DATA_HOME", Path.home() / ".local/share"))
     desktop = data / "kglobalaccel" / component
-    desktop.parent.mkdir(parents=True, exist_ok=True)
-    # Refuse a collision rather than overwriting even an old test file.
-    with desktop.open("x") as stream:
-        stream.write(
-            "[Desktop Entry]\nType=Application\nName=Dimmer Stage 1 recovery probe\n"
-            f"Exec={desktop_quote(ROOT / '.venv/bin/python3')} -I "
-            f"{desktop_quote(ROOT / 'tests/integration/kde_recovery.py')}\n"
-            "StartupNotify=false\nX-KDE-GlobalAccel-CommandShortcut=true\nX-KDE-Shortcuts=none\n"
-        )
-    bus = dbus.SessionBus()
+    contents = (
+        "[Desktop Entry]\nType=Application\nName=Dimmer Stage 1 recovery probe\n"
+        f"Exec={desktop_quote(ROOT / '.venv/bin/python3')} -I "
+        f"{desktop_quote(ROOT / 'tests/integration/kde_recovery.py')}\n"
+        "StartupNotify=false\nX-KDE-GlobalAccel-CommandShortcut=true\nX-KDE-Shortcuts=none\n"
+    )
     service = "org.kde.kglobalaccel"
-    manager = dbus.Interface(bus.get_object(service, "/kglobalaccel"), "org.kde.KGlobalAccel")
-    identity = DummyIdentity(ROOT, "linux-custom-dimmer-kde-probe.service")
-    ctl = controller(identity)
-    sentinel = subprocess.Popen(["/usr/bin/sleep", "30"])
-    sentinel_start = process_identity(sentinel.pid)[1]
-    try:
+
+    def connect():
+        return dbus.Interface(
+            dbus.SessionBus().get_object(service, "/kglobalaccel"), "org.kde.KGlobalAccel"
+        )
+
+    with (
+        temporary_desktop(desktop, contents, connect) as manager,
+        sentinel_process() as sentinel,
+        ExitStack() as cleanup,
+    ):
+        identity = DummyIdentity(ROOT, "linux-custom-dimmer-kde-probe.service")
+        ctl = controller(identity)
+        cleanup.callback(ctl.perform, "kill")
+        sentinel_start = process_identity(sentinel.pid)[1]
         subprocess.run(["desktop-file-validate", str(desktop)], check=True)
         available = bool(manager.isGlobalShortcutAvailable(234881092, component))
         print(f"Ctrl+Alt+Shift+D available: {available}; probe binds no key")
         manager.doRegister([component, "_launch", "Dimmer probe", "Recover dummy"])
         path = manager.getComponent(component)
-        route = dbus.Interface(bus.get_object(service, path), service + ".Component")
+        route = dbus.Interface(dbus.SessionBus().get_object(service, path), service + ".Component")
         assert "_launch" in route.shortcutNames()
         ctl.perform("launch", runtime_limit=10)
 
@@ -84,15 +91,3 @@ def test_kde_launches_independent_recovery_for_frozen_dummy():
         assert elapsed < 1
         assert sentinel.poll() is None and process_identity(sentinel.pid)[1] == sentinel_start
         print(f"KDE external command killed frozen dummy in {elapsed:.3f}s; sentinel survived")
-    finally:
-        ctl.perform("kill")
-        sentinel.terminate()
-        sentinel.wait(timeout=3)
-        manager.unregister(component, "_launch")
-        desktop.unlink()
-        subprocess.run(
-            ["kbuildsycoca6", "--noincremental"],
-            check=True,
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.PIPE,
-        )

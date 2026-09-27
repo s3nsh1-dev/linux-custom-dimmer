@@ -178,3 +178,27 @@ them. Its own timer and an independent systemd deadline bounded the experiment.
 This avoided another visual preview during base setup. Do not infer input
 transparency or layer stacking from this probe. Those need the actual rendered
 app and live acceptance tests. Details are in `docs/verification.md`.
+
+## 2026-09-27: final review and cleanup failure paths
+
+Independent review found that the KDE test created its desktop entry before
+entering cleanup protection. A setup exception could leave the file behind.
+Sequential cleanup could also skip unregister/removal and sentinel cleanup if
+service recovery raised. Fix: register cleanup as each resource is acquired,
+using ExitStack and separate contexts. Unregister, file removal, cache refresh,
+and sentinel cleanup now execute independently; error chains remain visible.
+Failure-injection tests cover connect/body/unregister failures and file collisions.
+
+Review also noticed that an identity-verified but inactive/failed/deactivating
+unit reported Already running. Although graded minor by the reviewer, this
+could conceal a failed launch from the owner. Treat it as a launch-correctness
+issue: return a clear retry error without restarting the service. Three new
+tests failed on the old behavior and passed after the change.
+
+During the cleanup refactor, a live rerun caught the KDE service name being
+used as its interface name. These differ in capitalization. Restored the
+verified `org.kde.KGlobalAccel` interface. The failure itself confirmed that
+desktop cleanup still ran. The final live suite passed all five cases, with
+normal stop 2.315s, immediate kill 0.272s, and KDE recovery 0.127s. The final
+default suite passed 72 tests. No review finding remains deferred. See the
+review-fix commit in `docs/status.md`.
