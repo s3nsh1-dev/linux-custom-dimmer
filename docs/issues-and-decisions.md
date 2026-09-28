@@ -250,3 +250,45 @@ launch tests passed, each with an external service deadline and app quit timer.
 The fast 0.315s graceful stop is consistent with systemd continuing a stopped
 process during shutdown, allowing the new event-driven signal wakeup to run.
 This does not replace the separately proven immediate kill route.
+
+## 2026-09-28: final review, registration ownership and probe expiry
+
+The independent Stage 2 review found two important gaps and no critical or minor
+findings. An uninstall with no desktop files could unregister a pre-existing
+same-name KDE action; a failed repair could discard its previous key assignment.
+The installer now requires the exact owned emergency file before mutating an
+existing action, snapshots its keys/presence, and restores that snapshot on
+failure. Cleanup is registered before desktop-cache refresh because KDE may
+discover the new action during that refresh. Four regression scenarios failed
+before the fixes and then passed: missing ownership on install/uninstall,
+failed repair, and a cache failure after registration.
+
+Live removal exposed two KDE details that the fake boundary had not modeled.
+Unregister can leave an empty component behind. Snapshot now distinguishes an
+empty component from a real unbound action by querying shortcutNames; the
+latter still requires ownership evidence. Also, isGlobalShortcutAvailable
+includes this component's own action in its current context. A repeat install
+now returns after verifying exact files and the already-active assigned key;
+repairing that owned key does not request a new reservation. New key assignments
+still require availability. Regression and live remove/reinstall checks passed;
+281 unrelated shortcut actions and two unrelated menu files were unchanged.
+The [KDE component implementation](https://raw.githubusercontent.com/KDE/kglobalacceld/master/src/component.cpp)
+confirms the current-context semantics. No broad shortcut-config rewrite is used.
+
+The video measurement originally launched ffplay as a child of the sampler,
+which did not protect it if the sampler or video event loop froze. It now has
+its own precisely identified transient user service, a manager runtime deadline,
+and ffplay's own playback deadline. A frozen disposable video process expired
+independently in 0.994s without invoking sampler cleanup. Dimmer and video
+cleanup run independently, and raw readings are retained even if cleanup fails.
+No additional runtime dependency was installed: ffmpeg/ffplay were already present.
+
+The first video sample was invalidated by changes from Stopped to 7/8% Active
+and then app exit. Its partial readings were retained but excluded from resource
+conclusions. The sampler now rejects a changed control/session state during a
+phase. Neither that interaction nor command dispatch is treated as a substitute
+for the owner's deferred hands-on acceptance.
+
+One tool operation on September 27 was not executed because automatic approval
+review hit its usage limit. Work resumed after the user changed tool permissions.
+This was an agent-tool access issue; no app task required root or sudo.

@@ -1,0 +1,278 @@
+#!/usr/bin/python3 -I
+"""Bounded OFF/ON/OFF measurement; read-only sensors, raw results stay local."""
+
+import argparse
+import json
+import os
+import statistics
+import subprocess
+import sys
+import time
+from dataclasses import dataclass
+from pathlib import Path
+
+import dbus
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT / "src"))
+from linux_custom_dimmer.control import Controller, Identity  # noqa: E402
+from linux_custom_dimmer.ipc import request  # noqa: E402
+from linux_custom_dimmer.service import Systemd  # noqa: E402
+
+
+@dataclass(frozen=True)
+class VideoIdentity(Identity):
+    seconds: int = 215
+
+    @property
+    def argv(self):
+        return [
+            "/usr/bin/env",
+            "SDL_VIDEODRIVER=wayland",
+            "/usr/bin/ffplay",
+            "-loglevel",
+            "error",
+            "-nostats",
+            "-an",
+            "-loop",
+            "0",
+            "-autoexit",
+            "-t",
+            str(self.seconds),
+            "-window_title",
+            "Dimmer video measurement",
+            "-x",
+            "960",
+            "-y",
+            "540",
+            str(self.root / ".local/measurement-video.mp4"),
+        ]
+
+
+def video_controller(root, runtime, seconds):
+    ctl = Controller(
+        VideoIdentity(root, "linux-custom-dimmer-video-probe.service", seconds), runtime, Systemd()
+    )
+    with ctl.backend.pinned(ctl.identity.unit) as properties:
+        if properties is not None:
+            raise RuntimeError("An existing video probe must finish before measurement")
+    return ctl
+
+
+def read(path):
+    try:
+        return path.read_text().strip()
+    except (OSError, PermissionError):
+        return None
+
+
+def process(pid):
+    fields = Path(f"/proc/{pid}/stat").read_text().rsplit(")", 1)[1].split()
+    memory = {}
+    text = read(Path(f"/proc/{pid}/smaps_rollup"))
+    if text:
+        for line in text.splitlines():
+            key, _, value = line.partition(":")
+            if key in {"Rss", "Pss"}:
+                memory[key] = int(value.split()[0]) / 1024
+    return {"cpu_ticks": int(fields[11]) + int(fields[12]), "memory_mib": memory}
+
+
+def sensors(night):
+    result = {"power": {}, "backlight": {}, "gpu": {}}
+    for path in Path("/sys/class/power_supply").iterdir():
+        if read(path / "type") in {"Battery", "Mains"}:
+            result["power"][path.name] = {
+                key: read(path / key)
+                for key in (
+                    "type",
+                    "status",
+                    "online",
+                    "capacity",
+                    "power_now",
+                    "current_now",
+                    "voltage_now",
+                )
+            }
+    for path in Path("/sys/class/backlight").iterdir():
+        result["backlight"][path.name] = {
+            key: read(path / key) for key in ("brightness", "actual_brightness", "max_brightness")
+        }
+    for path in Path("/sys/class/drm").glob("card[0-9]"):
+        device = path / "device"
+        state = read(device / "power/runtime_status")
+        result["gpu"][path.name] = {
+            "vendor": read(device / "vendor"),
+            "runtime_status": state,
+            "busy_percent": read(device / "gpu_busy_percent") if state == "active" else None,
+        }
+    values = night.GetAll("org.kde.KWin.NightLight", timeout=2)
+    result["night_light"] = {
+        key: int(values[key])
+        for key in ("enabled", "running", "currentTemperature", "targetTemperature")
+    }
+    return result
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument(
+        "--seconds", type=int, choices=range(30, 181), default=180, metavar="30..180"
+    )
+    parser.add_argument("--workload", choices=["idle", "video"], default="idle")
+    args = parser.parse_args()
+    runtime = args.seconds * 3 + 35
+    ctl = Controller(Identity(ROOT), Path(os.environ["XDG_RUNTIME_DIR"]), Systemd())
+    with ctl.backend.pinned(ctl.identity.unit) as properties:
+        if properties is not None:
+            raise RuntimeError("Close the existing dimmer before measurement")
+    bus = dbus.SessionBus()
+    daemon = dbus.Interface(
+        bus.get_object("org.freedesktop.DBus", "/org/freedesktop/DBus"), "org.freedesktop.DBus"
+    )
+    kwin = int(daemon.GetConnectionUnixProcessID("org.kde.KWin", timeout=2))
+    night = dbus.Interface(
+        bus.get_object("org.kde.KWin", "/org/kde/KWin/NightLight"),
+        "org.freedesktop.DBus.Properties",
+    )
+    local = ROOT / ".local"
+    local.mkdir(exist_ok=True)
+    workload = None
+    if args.workload == "video":
+        video = local / "measurement-video.mp4"
+        subprocess.run(
+            [
+                "/usr/bin/ffmpeg",
+                "-hide_banner",
+                "-loglevel",
+                "error",
+                "-y",
+                "-f",
+                "lavfi",
+                "-i",
+                "testsrc2=size=1280x720:rate=30",
+                "-t",
+                "5",
+                "-an",
+                "-c:v",
+                "mpeg4",
+                str(video),
+            ],
+            check=True,
+            timeout=30,
+        )
+    records = []
+    output = local / f"resources-{args.workload}-{time.strftime('%Y%m%d-%H%M%S')}.json"
+    baseline = sensors(night)
+    metadata = {
+        "revision": subprocess.check_output(
+            ["git", "rev-parse", "HEAD"], cwd=ROOT, text=True
+        ).strip(),
+        "seconds_per_phase": args.seconds,
+        "workload": args.workload,
+        "video": "software ffplay, looping 1280x720 MPEG4 30fps at 960x540"
+        if args.workload == "video"
+        else None,
+        "display": subprocess.check_output(["/usr/bin/kscreen-doctor", "-o"], text=True),
+        "baseline": baseline,
+        "app_opacity_on": 65,
+        "sample_seconds": 5,
+        "cpu_basis": "percent of one core from /proc ticks; RSS/PSS from smaps_rollup",
+    }
+
+    def call(action, **kwargs):
+        return request(ctl.directory / "control.sock", {"action": action, **kwargs})["status"]
+
+    try:
+        if args.workload == "video":
+            workload = video_controller(ROOT, Path(os.environ["XDG_RUNTIME_DIR"]), runtime)
+            workload.perform("launch", runtime_limit=runtime)
+        ctl.perform("launch", runtime_limit=runtime)
+        deadline = time.monotonic() + 5
+        while True:
+            try:
+                status = call("status")
+                break
+            except OSError:
+                if time.monotonic() > deadline:
+                    raise
+                time.sleep(0.05)
+        assert status["available"], status
+        with ctl.backend.pinned(ctl.identity.unit) as properties:
+            ctl.verify(properties)
+            pid = int(properties["MainPID"])
+        time.sleep(3)
+        for phase in ("off_before", "on", "off_after"):
+            if phase == "on":
+                call("select", value=65)
+                call("start")
+            else:
+                call("stop")
+            time.sleep(2)
+            status = call("status")
+            assert status["active"] == (phase == "on"), status
+            print(f"{args.workload}: {phase} for {args.seconds}s", flush=True)
+            end = time.monotonic() + args.seconds
+            while True:
+                if workload:
+                    with workload.backend.pinned(workload.identity.unit) as video_properties:
+                        if video_properties is None or video_properties["ActiveState"] != "active":
+                            raise RuntimeError("Video workload exited early")
+                        workload.verify(video_properties)
+                records.append(
+                    {
+                        "phase": phase,
+                        "time": time.monotonic(),
+                        "app": process(pid),
+                        "kwin": process(kwin),
+                        "sensors": sensors(night),
+                        "status": call("status"),
+                    }
+                )
+                observed = records[-1]["status"]
+                if observed["active"] != (phase == "on") or (
+                    phase == "on" and observed["opacity"] != 65
+                ):
+                    raise RuntimeError("Controls or session changed; discard this comparison")
+                if time.monotonic() >= end:
+                    break
+                time.sleep(min(5, end - time.monotonic()))
+    finally:
+        try:
+            ctl.perform("kill")
+        finally:
+            try:
+                if workload:
+                    workload.perform("kill")
+            finally:
+                output.write_text(json.dumps({"metadata": metadata, "samples": records}, indent=2))
+                print(f"Raw readings: {output}", flush=True)
+    ticks = os.sysconf("SC_CLK_TCK")
+    for phase in ("off_before", "on", "off_after"):
+        samples = [r for r in records if r["phase"] == phase]
+        elapsed = samples[-1]["time"] - samples[0]["time"]
+        result = {"phase": phase, "elapsed": round(elapsed, 2)}
+        for name in ("app", "kwin"):
+            result[name + "_cpu_percent"] = round(
+                100
+                * (samples[-1][name]["cpu_ticks"] - samples[0][name]["cpu_ticks"])
+                / ticks
+                / elapsed,
+                3,
+            )
+            for key in ("Rss", "Pss"):
+                available = [
+                    r[name]["memory_mib"][key] for r in samples if key in r[name]["memory_mib"]
+                ]
+                result[f"{name}_{key}_mib"] = (
+                    round(statistics.mean(available), 2) if available else None
+                )
+        result["overlay_paints"] = [samples[0]["status"]["paints"], samples[-1]["status"]["paints"]]
+        print(json.dumps(result), flush=True)
+    final = records[-1]["sensors"]
+    assert final["backlight"] == baseline["backlight"], "Backlight changed during measurement"
+    assert final["night_light"] == baseline["night_light"], "Night Light changed during measurement"
+
+
+if __name__ == "__main__":
+    main()

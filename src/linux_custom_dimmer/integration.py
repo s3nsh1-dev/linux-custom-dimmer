@@ -39,14 +39,41 @@ class KDEShortcuts:
 
     def registered(self):
         try:
-            keys = self.manager.shortcut(ACTION, timeout=2)
-            path = self.manager.getComponent(COMPONENT, timeout=2)
-            component = dbus.Interface(
-                self.bus.get_object("org.kde.kglobalaccel", path), "org.kde.kglobalaccel.Component"
-            )
-            return list(keys) == [KEY] and bool(component.isActive(timeout=2))
+            return self.snapshot() == ([KEY], True)
         except dbus.DBusException:
             return False
+
+    def snapshot(self):
+        try:
+            path = self.manager.getComponent(COMPONENT, timeout=2)
+        except dbus.DBusException as error:
+            if error.get_dbus_name() == "org.kde.kglobalaccel.NoSuchComponent":
+                return None
+            raise
+        component = dbus.Interface(
+            self.bus.get_object("org.kde.kglobalaccel", path), "org.kde.kglobalaccel.Component"
+        )
+        names = list(component.shortcutNames(timeout=2))
+        if not names:
+            # KDE may retain an empty component after unregistering its last action.
+            return None
+        if names != ["_launch"]:
+            raise RuntimeError("Cannot confirm ownership of unexpected emergency actions")
+        return list(self.manager.shortcut(ACTION, timeout=2)), bool(component.isActive(timeout=2))
+
+    def restore(self, snapshot):
+        if snapshot is None:
+            self.unregister()
+            return
+        keys, active = snapshot
+        self.manager.doRegister(ACTION, timeout=2)
+        self.manager.setShortcut(
+            ACTION, dbus.Array(keys, signature="i"), dbus.UInt32(6 if active else 4), timeout=2
+        )
+        if not active:
+            self.manager.setInactive(ACTION, timeout=2)
+        if self.snapshot() != snapshot:
+            raise RuntimeError("Could not restore the previous owned shortcut registration")
 
     def register(self):
         self.manager.doRegister(ACTION, timeout=2)
@@ -112,16 +139,27 @@ class Integration:
         if not self.shortcuts.registered():
             raise RuntimeError("Emergency shortcut unavailable. Run scripts/install-local.")
 
+    def owned_registration(self):
+        snapshot = self.shortcuts.snapshot()
+        emergency = self.data_home / f"applications/{COMPONENT}"
+        if snapshot is not None and not emergency.is_file():
+            raise RuntimeError("Cannot confirm ownership of the existing emergency shortcut")
+        return snapshot
+
     def install(self):
         self.check_files()
-        if not self.shortcuts.available():
+        previous = self.owned_registration()
+        if all(path.exists() for path in self.entries()) and self.shortcuts.registered():
+            return
+        # KDE's availability query includes our own action in the current context.
+        # Retaining an already owned key needs no new key reservation.
+        if (previous is None or previous[0] != [KEY]) and not self.shortcuts.available():
             raise RuntimeError(
                 "Ctrl+Alt+Shift+D is already assigned; existing shortcut was preserved"
             )
-        if all(path.exists() for path in self.entries()) and self.shortcuts.registered():
-            return
         with ExitStack() as rollback:
             rollback.callback(self.refresh)
+            rollback.callback(self.shortcuts.restore, previous)
             for path, text in self.entries().items():
                 if not path.exists():
                     path.parent.mkdir(parents=True, exist_ok=True)
@@ -129,14 +167,14 @@ class Integration:
                         rollback.callback(path.unlink, missing_ok=True)
                         stream.write(text)
             self.refresh()
-            rollback.callback(self.shortcuts.unregister)
             self.shortcuts.register()
             self.verify()
             rollback.pop_all()
 
     def uninstall(self):
         self.check_files()
-        self.shortcuts.unregister()
+        if self.owned_registration() is not None:
+            self.shortcuts.unregister()
         for path in self.entries():
             path.unlink(missing_ok=True)
         self.refresh()

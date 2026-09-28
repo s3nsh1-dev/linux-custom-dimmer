@@ -7,6 +7,6 @@ cmake -S native -B build/native -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo
 cmake --build build/native
 .venv/bin/python3 -c 'import dbus; from PyQt6.QtCore import QT_VERSION_STR, PYQT_VERSION_STR, qVersion; assert QT_VERSION_STR == qVersion(); print("PyQt", PYQT_VERSION_STR, "Qt", qVersion(), "dbus", dbus.__version__)'
 .venv/bin/python3 -m compileall -q src tests
-.venv/bin/ruff check src tests bin/dimmer scripts/prepare-headers scripts/install-local scripts/uninstall-local
-.venv/bin/ruff format --check src tests bin/dimmer scripts/prepare-headers scripts/install-local scripts/uninstall-local
+.venv/bin/ruff check src tests bin/dimmer scripts/prepare-headers scripts/install-local scripts/uninstall-local scripts/measure-resources
+.venv/bin/ruff format --check src tests bin/dimmer scripts/prepare-headers scripts/install-local scripts/uninstall-local scripts/measure-resources
 QT_QPA_PLATFORM=offscreen .venv/bin/python3 -m pytest -q -m 'not live'
