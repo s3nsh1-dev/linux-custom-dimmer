@@ -154,4 +154,7 @@ journalctl --user -u linux-custom-dimmer.service -b --no-pager
 [Status](docs/status.md), [verification](docs/verification.md),
 [KDE integration](docs/kde-integration.md), and
 [issues and decisions](docs/issues-and-decisions.md) record results, limitations,
-and local commits. No remote, publication, or release tag is created.
+and commits. The owner's repository is
+[s3nsh1-dev/linux-custom-dimmer](https://github.com/s3nsh1-dev/linux-custom-dimmer).
+The code remains a development version with the acceptance checks above pending;
+no release tag has been created.

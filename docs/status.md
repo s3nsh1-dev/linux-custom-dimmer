@@ -26,11 +26,16 @@ the application itself runs with ordinary user privileges.
 - `0369a41` — lifecycle guards, owner-only IPC, local launch/install/recovery.
 - `eb0907a` — review fixes for shortcut ownership/rollback and video expiry.
 - `405708d` — minimize controls during resource sampling, restore on relaunch.
-- Final documentation/evidence commit follows those checkpoints; see `git log`.
+- `1c37bde` — final documentation, evidence and remaining acceptance.
 
 Earlier Stage 1 commits: `a5a8a67`, `35dadec`, `68c22cf`, `a8ccdec`, `0812c8e`.
-No remote, push, publication, merge, or release tag was created. Open-source
-publication remains the owner's decision. All build and profiling output is ignored.
+The owner subsequently authorized uploading the project to
+`git@github.com:s3nsh1-dev/linux-custom-dimmer.git`, configured as `origin`.
+The upload uses `main` for the current source and preserves `stage-1-foundation`
+and `stage-2-app` as checkpoint branches, with their existing history intact.
+The upload does not mark release acceptance complete or create a release tag.
+No repository-visibility or license change is part of this action. Build output,
+the virtual environment and local profiling data remain ignored.
 
 ## Reproduce and use
 
