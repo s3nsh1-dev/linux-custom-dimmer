@@ -1,126 +1,157 @@
-# Linux custom dimmer
+# Linux Custom Dimmer
 
-A small neutral overlay for this Ubuntu KDE Wayland laptop. Stage 1 prepares
-the native bridge and independent recovery. Product controls are Stage 2 work.
-No overlay is created by the current launcher.
+A small native app for neutral extra dimming on this Ubuntu KDE Wayland laptop.
+It places a transparent black layer over the built-in display. Hardware
+brightness, Night Light and power settings stay under your control.
 
-## Development setup
+The app is built and installed locally. Automated and real-process recovery
+checks have passed; hands-on input, physical shortcut, and session-transition
+acceptance remain pending at the owner's request. See [verification](docs/verification.md).
+The version remains `0.1.0.dev0` until those checks pass.
 
-Use Ubuntu's Qt/PyQt6 and LayerShellQt together. Never install PyQt6 or
-PyQt6-Qt6 from pip into this project.
+## Use
 
-```sh
-./scripts/setup-dev
-./scripts/check
-```
-
-No sudo is needed on this laptop. The setup script uses its existing Python,
-pip, compiler, `dpkg`/APT, `wayland-info`, and Qt/PyQt6/dbus runtimes. It creates
-`.venv` with system packages visible, installs pinned developer tools including
-CMake/Ninja there, and installs this Python package editable without runtime
-dependencies. `venv --without-pip` uses Ubuntu's existing pip without the separate
-ensurepip package. Pip still writes only inside the venv.
-
-`scripts/prepare-headers` reads the installed Qt/LayerShellQt package versions,
-downloads exactly matching Ubuntu development packages into `.local/debs`,
-and extracts them under `.local/sysroot`. This is archive extraction, not a
-system package installation; no maintainer scripts run. The native bridge links
-directly to the existing `/usr/lib` runtime libraries. It does not copy or load
-a second Qt runtime. Headers need to remain available at the configured Ubuntu
-APT repository version. If that version is unavailable, setup stops with the
-APT error instead of selecting mismatched headers.
-
-The result is `build/native/libdimmer_layer_shell.so`. Run setup again after
-system Qt updates. It does not install desktop integration. The adapter requires
-matching Qt compile/runtime versions and LayerShellQt 6.6 or newer. Generated
-binaries, downloaded packages, caches, and environments are ignored by Git.
-
-`scripts/check` builds, checks imports and Python compilation, runs Ruff, and
-executes offscreen/unit tests. It does not connect to the desktop or signal
-services. Real recovery tests are explicit:
+Launch **Linux Custom Dimmer** from the application menu, or run:
 
 ```sh
-DIMMER_LIVE_TESTS=1 .venv/bin/python3 -m pytest -q -s tests/integration/test_recovery.py
-DIMMER_KDE_TESTS=1 .venv/bin/python3 -m pytest -q -s tests/integration/test_kde_route.py
-./scripts/probe-native
+./bin/dimmer
 ```
 
-Recovery tests create only disposable services with external runtime deadlines
-and a disposable sentinel. The KDE test creates and removes one temporary
-desktop entry, binds no key, and invokes KDE's actual external command route.
-The native probe never maps a visible window or paints pixels. Its Qt timer
-exits after 250 ms and systemd terminates it within six seconds even if frozen.
-Protocol diagnostics remain in ignored `.local/native-probe.log`.
+It opens **Stopped** at 50%. Select **Extra dimming**, then **Start**.
+The slider accepts 0–80%; higher is darker. Adjusting it while stopped only
+selects the next level. **Stop** removes the layer and keeps the window open;
+0% also stops. Closing the window or **Emergency stop and quit** exits and
+removes the layer. Minimize may retain dimming. Launching again shows the same
+instance. Lock, suspend, or a display change stops dimming; resume explicitly.
 
-## Launch and recovery contract
+To recover independently of the app, including if its UI freezes:
 
-```sh
-./bin/dimmer         # Stage 1 stub exits without a window; Stage 2 opens Stopped
-./bin/dimmer --stop  # independent graceful service shutdown, two-second timeout
-./bin/dimmer --kill  # independent immediate termination of the verified service
-```
+- Press **Ctrl+Alt+Shift+D**.
+- Launch **Dimmer emergency stop** from the application menu.
+- Run `./bin/dimmer --kill` for immediate recovery, or `./bin/dimmer --stop`
+  for graceful shutdown with a two-second forced-stop fallback.
 
-The CLI uses system Python and distro `dbus-python`; it needs neither Qt nor a
-working venv for recovery. Only launch uses `.venv/bin/python3`.
-It accepts no PID, unit, command, or opacity arguments. A fixed transient user
-service prevents multiple instances. Stage 2 will add showing the existing UI.
-
-Before service control, the launcher checks its exact executable/argument list,
-project identity, safety properties, and random token in an owner-only runtime
-record. It holds a systemd unit reference while checking and stopping, preventing
-unit collection and name reuse between those steps. A mismatch is an error.
-This protects against accidental collisions; it is not a security boundary
-against malicious code already running as the same user.
-
-Runtime files are in `$XDG_RUNTIME_DIR/linux-custom-dimmer/`, mode 0700, with
-mode-0600 `owner.json` and `control.lock`. Do not delete them while the app runs.
-There is no PID file or background recovery daemon. systemd supplies
-`Restart=no`, `KillMode=control-group`, `TimeoutStopSec=2s`, and
-`SendSIGKILL=yes`; the service is bound to the active graphical session.
-
-If the launcher files themselves are unavailable, the direct manager command is:
+If the checkout is unavailable, the direct fallback is:
 
 ```sh
 systemctl --user stop linux-custom-dimmer.service
 ```
 
-That manual command bypasses the launcher's identity checks. Use it only for the
-known dimmer service. Normal recovery uses `bin/dimmer`.
+That direct command bypasses the launcher's identity checks; use it for the
+known dimmer unit. The menu command and shortcut were exercised against the
+frozen real app; physical key delivery still needs the hands-on check.
 
-## Native boundary and Stage 2 contract
+The 80% cap is not a visibility guarantee. Choose darkness by eye. Opacity is
+not calibrated physical brightness. Black adds no tint of its own and does not
+cancel an independently enabled Night Light tint.
 
-Call `support.check_session()` and verify independent recovery before creating
-any visible overlay. The support check runs the installed `wayland-info` once,
-with a two-second deadline, and requires KDE Wayland and the layer-shell protocol.
-It rejects a global shell override.
+## Setup and checks
 
-`NativeBridge.configure(window)` accepts a live caller-owned `QWindow` on the
-GUI thread before its native surface exists. It preserves the Python object and
-GIL through the C call, checks Qt versions and bridge ABI, and retains no pointer.
-The C adapter uses public LayerShellQt calls on that window only. It sets the
-overlay layer, four anchors, exclusive zone -1, no keyboard interactivity, and
-Qt input-transparent/no-focus flags. It does not draw, globally select a shell,
-change hardware brightness, or create a control window. The caller destroys the
-window if configuration or later surface creation fails.
+Development, installation, use, and removal need no sudo on this laptop.
 
-The pure `State` class starts Stopped at 50%, validates integers 0..80, keeps
-stopped adjustments inactive, and stops at zero. It is a transition contract;
-the Stage 2 controller must validate support/recovery and successful rendering
-before committing an Active transition.
+```sh
+./scripts/setup-dev
+./scripts/check
+./scripts/install-local
+```
 
-## Desktop integration and removal
+Tested environment: Ubuntu 26.04.1, Plasma 6.6.6, Wayland, Python 3.14.4,
+PyQt6/Qt 6.10.2 and LayerShellQt 6.6.4. Support is limited to one built-in
+laptop display, discovered from the connector reported by Qt. External-monitor
+controls, GNOME, X11, tray integration and public packaging are outside scope.
+Start is disabled if required support or independent recovery cannot be verified.
 
-No permanent launcher, shortcut, service file, autostart entry, or plugin is
-installed in Stage 1. See [KDE integration](docs/kde-integration.md) for the
-verified command route and the Stage 2 binding procedure.
+Setup uses the existing distro Python, pip, compiler, `dpkg`/APT, Qt/PyQt6,
+dbus-python and `wayland-info`. It creates a project `.venv` with system packages
+visible, installs pinned development tools, and installs this package editable.
+Matching Qt/LayerShellQt headers are downloaded and extracted under `.local/`;
+no system package installation or maintainer script is run. The native adapter
+links to the existing system runtime libraries. Do not install another PyQt6/Qt
+runtime with pip. Run setup again after a system Qt update. If matching header
+packages are unavailable, setup stops instead of choosing different versions.
 
-To remove this development checkout, stop it with `./bin/dimmer --stop`, then
-remove the project directory. After the service has stopped, its private runtime
-directory can also be removed; logout removes it automatically. All build tools
-and extracted headers added during Stage 1 are inside this project. Existing
-Ubuntu runtime packages remain untouched.
+`scripts/check` builds the adapter, checks imports, compilation, lint/formatting,
+and runs offscreen and unit tests. Some sandboxed agents need ordinary-user tool
+access to bind the temporary Unix sockets used by tests. No desktop or live
+service operation is part of the default checks.
 
-Read [status](docs/status.md), [verification](docs/verification.md),
-[testing](docs/testing.md), and [issues and decisions](docs/issues-and-decisions.md)
-before the next stage. The next instruction is `build the app` only after Stage 1
-build and recovery prerequisites pass.
+Explicit live tests create their own bounded services and clean up afterward:
+
+```sh
+DIMMER_LIVE_TESTS=1 .venv/bin/python3 -m pytest -q -s tests/integration/test_recovery.py
+DIMMER_KDE_TESTS=1 .venv/bin/python3 -m pytest -q -s tests/integration/test_kde_route.py
+DIMMER_APP_TESTS=1 .venv/bin/python3 -m pytest -q -s tests/integration/test_app.py
+.venv/bin/python3 tests/integration/app_probe.py
+```
+
+The last two commands briefly dim the actual display; close any existing dimmer
+first. Each app test has its own quit timer and an independent systemd runtime
+limit. The native-only `./scripts/probe-native` configures unmapped windows.
+See [testing](docs/testing.md) for hands-on acceptance and resource methodology.
+
+For repeatable resource samples, close the dimmer first:
+
+```sh
+./scripts/measure-resources --workload idle
+./scripts/measure-resources --workload video
+```
+
+Each command runs OFF/ON/OFF at 65%, default three minutes per phase, with a
+hard app expiry. The sampler minimizes the controls; leave the app and system
+brightness unchanged until it closes both test windows. `--seconds 60` selects a shorter comparison. Video uses the
+existing ffmpeg/ffplay and a generated local test clip. Raw readings remain in
+ignored `.local/`. These readings do not establish battery-life savings.
+
+## Local integration and removal
+
+`install-local` creates exactly two application entries under
+`${XDG_DATA_HOME:-~/.local/share}/applications/`:
+
+- `linux-custom-dimmer.desktop`
+- `linux-custom-dimmer-emergency.desktop`
+
+The emergency entry supplies KDE's external command shortcut. KDE stores its
+owned component in the user's shortcut configuration through its D-Bus API.
+The installer preserves conflicting files and key assignments and can be rerun.
+The entries refer to this checkout's absolute path; uninstall before moving it.
+No root service, autostart entry, permanent service file, plugin, or extra
+background daemon is installed.
+
+```sh
+./scripts/uninstall-local
+```
+
+This stops the verified app first and removes its entries and shortcut. It
+refuses modified or unrelated entries. You may then remove the project directory,
+which contains every build tool and header added for development. The private
+`$XDG_RUNTIME_DIR/linux-custom-dimmer/` directory can be removed after the app
+has stopped; logout clears it automatically. Existing system packages stay intact.
+
+## Implementation and troubleshooting
+
+The control window is Qt Widgets. A raster `QWindow` and `QBackingStore` paint
+black with source alpha only on exposure, resize, or a changed opacity. There is
+no screen capture or idle repaint timer. A narrow project-built C++ adapter uses
+public LayerShellQt APIs on that window alone, checks Qt compatibility and GUI
+thread use, and configures input transparency with no keyboard focus.
+
+One transient `linux-custom-dimmer.service` holds the Python application. The
+Qt-free recovery launcher uses system Python and dbus-python and works even if
+the venv or GUI is broken. Before controlling the service it verifies the exact
+executable, arguments, project identity, private token and shutdown properties,
+while holding a systemd reference to prevent name reuse. This prevents accidental
+collisions; it is not a boundary against malicious code running as the same user.
+A private bounded Unix socket accepts only fixed application actions.
+
+If Start is disabled, read the message in the window. Repair local integration
+with `./scripts/install-local`, rebuild after Qt updates with `./scripts/setup-dev`,
+and relaunch. Inspect app errors with:
+
+```sh
+journalctl --user -u linux-custom-dimmer.service -b --no-pager
+```
+
+[Status](docs/status.md), [verification](docs/verification.md),
+[KDE integration](docs/kde-integration.md), and
+[issues and decisions](docs/issues-and-decisions.md) record results, limitations,
+and local commits. No remote, publication, or release tag is created.

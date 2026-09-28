@@ -1,122 +1,121 @@
 # Project status
 
-Updated: 2026-09-27.
+Updated: 2026-09-28. Branch: `stage-2-app`.
 
 ## Current stage
 
-Stage 2 is in progress on `stage-2-app`. Native controls and the raster overlay
-pass 120 default tests and seven real-app lifecycle/recovery tests. Session
-guards and local integration are implemented; hands-on acceptance and resource
-measurements are in progress.
-The owner requires ordinary-account development and runtime with minimal
-privileges. No sudo or system package installation was used.
+Stage 1 is complete. Stage 2 is implemented and installed for the current user;
+release acceptance remains open because the owner explicitly deferred hands-on
+input, physical shortcut and actual session-transition checks. Version stays
+`0.1.0.dev0`. Do not call Stage 2 release-complete or tag `v0.1.0` yet.
 
-## Local history
+The app opens Stopped at 50%, applies a neutral layer on Start, accepts 0–80%,
+stops at zero, and cleans up on Stop/close/quit. Relaunch restores one existing
+window. Independent identity-checked service recovery works with the GUI frozen.
+Lock/suspend/output notifications stop dimming and do not restart it.
 
-Current branch: `stage-2-app`, from Stage 1 handoff `ff28a31`.
+The owner requires ordinary-account development, installation and use with
+minimal privileges. No sudo or system package installation was used. Tool
+sandbox permissions concern the agent's access to the desktop and local sockets;
+the application itself runs with ordinary user privileges.
 
-- `a5a8a67` — initial agreed scope and evidence.
-- `35dadec` — rootless development environment, matching headers, native adapter.
-- `68c22cf` — independent launch/recovery, unit identity checks, live process tests.
-- `a8ccdec` — state contract, bounded unmapped probe, and Stage 1 handoff.
-- `0812c8e` — final review fixes and failure-path regression tests.
-- `ff28a31` — Stage 1 completion record.
-- `ba108e0` — native overlay and controls, rendering and UI tests.
-- Lifecycle, local IPC, menu/shortcut integration checkpoint follows `ba108e0`.
+## Saved checkpoints
 
-No remote, push, publication, or release tag exists. Open-source distribution
-remains the owner's later decision. Build output and downloaded tools are ignored.
+- `ff28a31` — completed Stage 1 foundation and verification handoff.
+- `ba108e0` — native overlay and controls, state/rendering/UI tests.
+- `0369a41` — lifecycle guards, owner-only IPC, local launch/install/recovery.
+- `eb0907a` — review fixes for shortcut ownership/rollback and video expiry.
+- `405708d` — minimize controls during resource sampling, restore on relaunch.
+- Final documentation/evidence commit follows those checkpoints; see `git log`.
 
-## Reproduce the setup and checks
+Earlier Stage 1 commits: `a5a8a67`, `35dadec`, `68c22cf`, `a8ccdec`, `0812c8e`.
+No remote, push, publication, merge, or release tag was created. Open-source
+publication remains the owner's decision. All build and profiling output is ignored.
+
+## Reproduce and use
 
 ```sh
 ./scripts/setup-dev
 ./scripts/check
-DIMMER_LIVE_TESTS=1 .venv/bin/python3 -m pytest -q -s tests/integration/test_recovery.py
-DIMMER_KDE_TESTS=1 .venv/bin/python3 -m pytest -q -s tests/integration/test_kde_route.py
-./scripts/probe-native
-```
-
-Setup works without admin rights on this laptop, using the existing system
-Python/pip/compiler. It creates `.venv` with access to distro packages, installs
-pinned tools there, downloads exact-version distro headers into `.local/debs`,
-extracts them into `.local/sysroot`, and builds `build/native/`.
-It installs this package editable with no pip runtime dependencies.
-Re-run setup after system Qt updates. Do not pip-install another Qt runtime.
-
-Observed environment: Ubuntu 26.04.1, Plasma 6.6.6, Wayland, Python 3.14.4,
-PyQt6/Qt 6.10.2, LayerShellQt 6.6.4, dbus-python 1.4.0, GCC 15.2.0,
-systemd 259.5. Added tools: CMake 4.2.3, Ninja 1.13.0, pytest 9.0.2, Ruff 0.15.7,
-setuptools 82.0.1, iniconfig 2.3.0, pluggy 1.6.0, inside `.venv` only.
-The downloaded development packages match the installed Ubuntu runtime versions.
-No system packages were installed or changed; no plugin is needed.
-
-## Stage 1 results (historical)
-
-- Rootless setup and repeat setup passed. Strict native compile, Qt imports,
-  Python compilation, Ruff, formatting, and 72 default tests passed. Plain pytest also passed 72, with 5 live cases skipped.
-- Four live service tests passed. Frozen dummy plus child stopped in 2.315s;
-  independent kill took 0.272s. Unrelated sentinel survived. Concurrency,
-  wrong-identity refusal, and automatic external deadline were verified.
-- KDE command test passed in 0.127s after the review fixes. Ctrl+Alt+Shift+D was available, but no key
-  was bound. Temporary desktop file and registration were removed.
-- Native probe succeeded in 516ms with only unmapped windows. It had a Qt timer
-  and an independent systemd deadline. No pixels or dimming were displayed.
-- The main Stage 1 service entry point prints an explanatory line and exits.
-  `bin/dimmer --stop` and `--kill` are independent of Qt and the venv.
-
-Stage 1 left private ownership and lock files under
-`$XDG_RUNTIME_DIR/linux-custom-dimmer/`. Test runs create
-similarly private directories named for their disposable units; this session
-removed those after confirming their services were absent. Logout removes
-runtime files. They are not processes or startup registrations.
-At that handoff no permanent application menu entry or shortcut existed.
-The KDE test temporarily used
-`~/.local/share/kglobalaccel/linux-custom-dimmer-stage1-probe.desktop` and removed
-it. Final inventory confirms zero dimmer/test units and zero dimmer timers;
-no dimmer, sentinel, or probe remains running.
-
-## Stage 2 implementation and current evidence
-
-- Native controls: Stopped at 50%, range 0–80%, explicit Start/Stop, zero-stop,
-  immediate emergency quit and close cleanup. Raster layer paints on demand.
-- Lock/suspend/output notifications stop the layer and never restart it.
-  Start verifies session state, native bridge, service identity, installed
-  emergency command, and the active shortcut assignment.
-- Private bounded Unix socket handles fixed validated actions; relaunch shows
-  the existing window. Qt-free recovery remains independent of this socket.
-- Installed user menu entries `linux-custom-dimmer.desktop` and
-  `linux-custom-dimmer-emergency.desktop`, plus Ctrl+Alt+Shift+D through KDE.
-  No system packages, system services, autostart, or extra daemon were added.
-- `scripts/check`: 120 passed, 12 live tests deselected. The tool sandbox needs
-  its ordinary-user escape to allow local Unix sockets; this is not sudo.
-- `DIMMER_APP_TESTS=1 .venv/bin/python3 -m pytest -q -s tests/integration/test_app.py`:
-  seven passed. Each app expires after 15 seconds and has an inner quit timer.
-  Frozen app recovery: KDE command 0.256s, menu command 0.588s, graceful stop
-  0.315s. Sentinel survived. Quit, SIGTERM, SIGKILL, duplicate launches and
-  zero/Stop cleanup passed. These prove command dispatch, not physical key input.
-- Earlier 20-second probe: 50/65/80% each active, one paint per change, no idle
-  repaint; 0% removed the layer. Every test ended with its service absent.
-
-Raw native diagnostics and setup output remain under ignored `.local/`.
-See `docs/verification.md` for actual results and limitations, and
-`docs/kde-integration.md` for the external shortcut mechanism.
-
-## Remaining work and next action
-
-Continue authorized Stage 2 Tasks 4–6. Finish live acceptance for the
-implemented controls, lifecycle guards and emergency route.
-Verify visible neutrality, input passing, frozen-app key recovery, desktop
-lifecycle behavior, and final idle/video resource use. No product release or
-`v0.1.0` tag is justified by Stage 1 checks.
-
-Runtime commands after Stage 2 implementation:
-
-```sh
+./scripts/install-local
 ./bin/dimmer
 ./bin/dimmer --stop
 ./bin/dimmer --kill
 ```
 
-The direct fallback is `systemctl --user stop linux-custom-dimmer.service` for
-the known dimmer unit. Routine recovery uses the identity-checking launcher.
+Use **Linux Custom Dimmer** in the application menu. The independent emergency
+key is **Ctrl+Alt+Shift+D**, and the separate menu entry is **Dimmer emergency
+stop**. Both use the same Qt-independent `bin/dimmer --kill`. KDE command dispatch
+and the actual desktop-entry route were verified against a frozen real app.
+Physical key delivery is still pending. Direct fallback for the known unit:
+`systemctl --user stop linux-custom-dimmer.service`.
+
+Remove the integration with `./scripts/uninstall-local` before moving/deleting
+this checkout. It stops the verified application first, then removes only owned
+entries and the owned shortcut action. Repeat install and uninstall are safe.
+
+## Dependencies and external integration
+
+Observed environment: Ubuntu 26.04.1, Plasma 6.6.6, Wayland, Python 3.14.4,
+PyQt6/Qt 6.10.2, LayerShellQt 6.6.4, dbus-python 1.4.0, GCC 15.2.0,
+systemd 259.5. The existing system runtimes are unchanged.
+
+Stage 1 created `.venv` with distro packages visible, pinned pytest 9.0.2,
+Ruff 0.15.7, setuptools 82.0.1, iniconfig 2.3.0, pluggy 1.6.0, CMake 4.2.3
+and Ninja 1.13.0. Matching headers were downloaded/extracted to `.local/sysroot`,
+not installed into the OS. Re-run setup after Qt updates; never pip-install a
+second Qt runtime. Stage 2 added no dependency; video tests use existing ffmpeg/ffplay.
+
+Persistent integration is exactly these two user files:
+
+- `~/.local/share/applications/linux-custom-dimmer.desktop`
+- `~/.local/share/applications/linux-custom-dimmer-emergency.desktop`
+
+With custom XDG_DATA_HOME the same relative `applications/` paths are used.
+KDE owns the corresponding `linux-custom-dimmer-emergency.desktop` component
+in its shortcut configuration/state, managed through its D-Bus API. No system
+service, permanent user service file, autostart, plugin or extra daemon exists.
+
+At runtime, `$XDG_RUNTIME_DIR/linux-custom-dimmer/` is mode 0700, with private
+ownership/lock files and a mode-0600 control socket. A crash may leave a stale
+socket pathname; the next verified app process replaces it. These are not
+running processes. Logout removes runtime files. Resource/live tests create
+similarly private directories for their disposable services; cleanup is recorded
+in verification. All actual services are transient and have no automatic restart.
+
+## Verification and limitations
+
+- `scripts/check`: adapter build, imports, compilation, Ruff and format passed;
+  128 safe tests passed, 14 opt-in live cases deselected.
+- The full live-enabled suite passed 140 tests at the review-fix revision; the
+  minimize addition then passed its safe tests and real-app relaunch check.
+  Verification identifies these revisions separately; the safe suite and the
+  changed live path were rerun after the minimize addition.
+- Real app recovery retest: frozen KDE command 0.156s, emergency desktop route
+  0.204s, graceful stop 0.215s. Frozen SIGTERM-ignoring dummy/child: stop 2.248s,
+  immediate kill 0.232s. Unrelated sentinel survived. Frozen video deadline 1.042s.
+- Live install/remove/reinstall preserved 281 unrelated shortcut actions and
+  both unrelated user menu entries. Owned desktop files passed validation.
+- The 60-second idle ON sample used 0.017% of one CPU core, 63.13 MiB PSS and
+  196.46 MiB RSS, with one paint and no idle repaint. Battery/GPU cost cannot be
+  isolated from background activity. Video ON used 0.017% CPU and 67.87 MiB PSS;
+  its full comparison failed the final settings check because backlight changed
+  during the initial OFF phase. No settings were rewritten. See verification.
+- Independent review found two important gaps, both fixed and tested. Live
+  retests also fixed empty KDE components and repeat-install availability
+  semantics. No review finding remains deferred.
+
+See [verification](verification.md) for commands, raw-log locations, resource
+conditions, failure/retest history and acceptance limits. [Issues and decisions](issues-and-decisions.md)
+records significant problems and reasons for implementation choices.
+
+## Next executable step
+
+Run `./bin/dimmer` for normal use, or ask to run the bounded hands-on acceptance
+session when ready. Confirm neutral appearance and click/type/scroll/popup/
+fullscreen behavior; test the physical emergency key with normal, minimized
+and frozen app states; then test actual lock/suspend/display transitions.
+These checks remain required before the release version/tag. A controlled video
+comparison with fixed brightness also remains useful; the completed run was
+inconclusive for power. Final inventory found no dimmer, video probe, sentinel
+or timer running; the desktop integration remains installed.

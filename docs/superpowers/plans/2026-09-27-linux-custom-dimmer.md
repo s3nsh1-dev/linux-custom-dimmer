@@ -132,46 +132,51 @@ match the table; create each when its task needs it.
 
 ## Stage 2: user says `build the app`
 
+Implementation checkpoint: `405708d` (2026-09-28). Required hands-on
+acceptance remains open at the owner's request; this stage is not release-complete.
+See `docs/verification.md` for the exact split between automated evidence and
+pending physical key/input/session checks.
+
 ### Task 4: implement the neutral overlay and native controls
 
-- [ ] Read the committed Stage 1 status and verify its commands still work.
+- [x] Read the committed Stage 1 status and verify its commands still work.
   Use the current clean task branch or a focused local feature branch. Do not
   discard existing work or repeat setup that is already verified.
-- [ ] Implement `overlay.py` using the verified adapter and Qt raster drawing.
+- [x] Implement `overlay.py` using the verified adapter and Qt raster drawing.
   Use one alpha-enabled surface for the built-in display, input transparency,
   no focus or keyboard interactivity, and no exclusive space reservation.
-- [ ] Write focused tests around surface creation/removal, opacity limits,
+- [x] Write focused tests around surface creation/removal, opacity limits,
   unchanged-value updates, and error cleanup. An inactive or unchanged overlay
   must not schedule repeated paints. A failed surface must be destroyed.
-- [ ] Implement `window.py` with a labelled native slider, Start, Stop, and the
+- [x] Implement `window.py` with a labelled native slider, Start, Stop, and the
   emergency button. Connect it through the state/controller boundary; do not
   let widget construction create a dark layer. Supply normal keyboard access.
-- [ ] Validate the state table from the scope: launch Stopped, Start at 50%,
+- [x] Validate the state table from the scope: launch Stopped, Start at 50%,
   active slider changes, 0% stops, stopped slider changes do not start, repeated
   Stop is harmless, and window close removes the layer.
 - [ ] Test interaction with a separate disposable window, popups, scrolling,
   typing, and fullscreen content. Capture actual findings; mocks alone cannot
   establish click-through or correct compositor stacking.
-- [ ] Commit `feat: add neutral overlay and controls` after relevant checks.
+- [x] Commit `feat: add neutral overlay and controls` after relevant checks.
 
 ### Task 5: lifecycle, single instance, and local integration
 
-- [ ] Connect screen geometry/removal and session lock/suspend notifications.
+- [x] Connect screen geometry/removal and session lock/suspend notifications.
   On these events, remove the layer and remain Stopped until Start is requested.
   Do not place the overlay above lock/security surfaces or take exclusive input.
 - [ ] Test event handling with injected notifications, and perform live checks
   where practical. Display changes must not leave an orphan or duplicated layer.
-- [ ] Implement single-instance/show behavior with owner-only local IPC if
+- [x] Implement single-instance/show behavior with owner-only local IPC if
   needed. Validate fixed actions and opacity values; reject malformed payloads.
   A second launch must not create another overlay or kill the first app.
-- [ ] Add local launch/install/uninstall scripts. Record every external path
+- [x] Add local launch/install/uninstall scripts. Record every external path
   created, including main/emergency launchers and shortcut registration. Use the
   existing user-service manager; do not create root services or autostart entries.
-- [ ] Register the actual available emergency shortcut to the independent
+- [x] Register the actual available emergency shortcut to the independent
   recovery command. Preserve existing shortcuts. If a required desktop step
   needs user interaction or permission, explain the concrete need; do not mark
   the shortcut working before it has been exercised.
-- [ ] Verify Start stays disabled if independent recovery is unavailable.
+- [x] Verify Start stays disabled if independent recovery is unavailable.
   Commit the lifecycle and integration changes with the tests run.
 
 ### Task 6: failure recovery, resources, and final handoff
@@ -182,19 +187,19 @@ match the table; create each when its task needs it.
   Verify the independent emergency launcher and global shortcut terminate its
   service even when its event loop cannot run. The unrelated test sentinel must
   remain alive. Never target unrelated real applications or the compositor.
-- [ ] Repeat launch/stop cycles, exercise the maximum permitted opacity, and
+- [x] Repeat launch/stop cycles, exercise the maximum permitted opacity, and
   test invalid inputs and service-name collisions. Verify no lingering timers,
   child processes, or duplicate overlays remain after cleanup.
-- [ ] Measure a warmed-up final app, not just the prototype. Record application
+- [x] Measure a warmed-up final app, not just the prototype. Record application
   CPU/RSS/PSS, compositor/GPU activity, backlight, battery status, Night Light
   state, and an idle OFF/ON/OFF comparison. Preserve raw logs locally and commit
   concise summaries. Include a video workload when available; label omitted
   or inconclusive results. Do not infer battery-life savings from a short run.
-- [ ] Run all relevant automated checks and inspect the final diff for unrelated
+- [x] Run all relevant automated checks and inspect the final diff for unrelated
   changes, unsafe process targeting, dependency/runtime mismatches, and logging
   or rendering loops. Record the actual live acceptance results in
   `docs/verification.md`.
-- [ ] Update README with exact launch, Start/Stop, emergency recovery,
+- [x] Update README with exact launch, Start/Stop, emergency recovery,
   compatibility, limitations, and uninstall instructions. Complete the issue
   log and status with final commits and all integration locations.
 - [ ] Commit verified milestones, set version `0.1.0`, and add a local `v0.1.0`

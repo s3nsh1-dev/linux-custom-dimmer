@@ -104,3 +104,32 @@ commands, results, failure/retest history, live checks, recovery latency,
 resource summary, and remaining limitations. Required safety or live behavior
 checks cannot be waived merely because unit tests pass. Tag `v0.1.0` only after
 the required checks pass. End testing with no active overlay or test process.
+
+## Current test commands and handoff
+
+The safe default remains `./scripts/check`. The implemented opt-in suite can be
+selected together after closing an existing dimmer:
+
+```sh
+DIMMER_LIVE_TESTS=1 DIMMER_KDE_TESTS=1 DIMMER_APP_TESTS=1 \
+DIMMER_INSTALL_TESTS=1 DIMMER_VIDEO_TESTS=1 \
+.venv/bin/python3 -m pytest -q -s
+```
+
+This briefly dims the real desktop, freezes only owned test/application services,
+and removes/reinstalls only this checkout's desktop integration. It leaves the
+integration installed and each test service stopped. Do not run it concurrently
+with normal dimmer use. Offscreen/socket cases are included in the full suite.
+
+`scripts/measure-resources --workload idle|video --seconds 60` runs a shorter
+OFF/ON/OFF comparison; the default is 180 seconds per phase. It minimizes the
+controls and uses an independent manager deadline for both the dimmer and the
+optional generated-video workload. Leave the controls and system brightness
+unchanged. State changes reject the comparison; the final check also rejects
+changed backlight/Night Light values after retaining readings and cleaning up.
+A failed setting comparison must remain labelled inconclusive, as occurred in
+the recorded video run. Do not rewrite user settings to make a test pass.
+
+The remaining physical-input, global-key and actual session-transition checks
+are listed in `docs/verification.md`. The owner deferred them, so automated
+results must not be presented as full release acceptance.

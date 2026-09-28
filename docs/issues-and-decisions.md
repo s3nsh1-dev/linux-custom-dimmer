@@ -300,3 +300,23 @@ out of the way. This exposes the already supported native minimize behavior;
 it adds no target, command, or arbitrary argument. A protocol case failed before
 implementation, then passed. UI and live relaunch tests verify minimizing retains
 state and relaunch restores the same instance. Default suite: 128 passed.
+
+## 2026-09-28: resource evidence and handoff limits
+
+The completed minimized video run at `405708d` reached all three 60-second phases,
+with correct Stopped/Active/Stopped state and one unchanged ON paint. ON app cost
+was 0.017% of one core, 67.87 MiB PSS and 196.44 MiB RSS. The Nvidia device stayed
+suspended. But the requested/actual backlight changed during OFF-before, before
+any layer was created (618→61680 and 3855→50780). The sampler's final equality
+assertion failed after cleanup, correctly rejecting a fully controlled comparison.
+The source of that setting change was not established. No app/sampler backlight
+write exists, and no restoration write was made. Battery was full/on AC; zero
+battery current cannot measure system power. CPU/memory/paint observations are
+recorded, but video power attribution remains inconclusive.
+
+The earlier idle ON sample measured 0.017% CPU and 63.13 MiB PSS with no idle
+repainting. Both runs were shorter and busier than a controlled battery benchmark;
+no battery-life claim is made. The owner deferred physical-key, click-through and
+actual session-transition acceptance. Keep `0.1.0.dev0` and no release tag until
+those checks pass. Documentation includes exact commands, all integration paths,
+removal steps and remaining checks. This handoff leaves no overlay running.
