@@ -96,6 +96,8 @@ def main():
         action = payload["action"]
         if action == "show":
             window.show_existing()
+        elif action == "minimize":
+            window.showMinimized()
         elif action == "start":
             controller.start()
         elif action == "stop":

@@ -31,7 +31,9 @@ def decode_request(raw):
         value = request.get("value")
         if set(request) != {"action", "value"} or type(value) is not int or not 0 <= value <= 80:
             raise ValueError("Opacity must be an integer from 0 to 80")
-    elif action not in {"show", "start", "stop", "quit", "status"} or set(request) != {"action"}:
+    elif action not in {"show", "minimize", "start", "stop", "quit", "status"} or set(request) != {
+        "action"
+    }:
         raise ValueError("Unknown action")
     return request
 

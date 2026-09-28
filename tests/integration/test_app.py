@@ -66,6 +66,8 @@ def test_relaunch_cannot_stack_and_zero_stop_removes_layer(app):
         pid = int(props["MainPID"])
     call(app, "start")
     wait_for(lambda: call(app, "status")["active"])
+    call(app, "minimize")
+    assert call(app, "status")["active"]
     for _ in range(2):
         result = subprocess.run([ROOT / "bin/dimmer"], capture_output=True, text=True, timeout=5)
         assert result.returncode == 0, result.stderr

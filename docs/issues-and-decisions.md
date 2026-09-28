@@ -292,3 +292,11 @@ for the owner's deferred hands-on acceptance.
 One tool operation on September 27 was not executed because automatic approval
 review hit its usage limit. Work resumed after the user changed tool permissions.
 This was an agent-tool access issue; no app task required root or sudo.
+
+Repeated resource comparisons received manual Start/slider changes; the owner
+confirmed the interruption and requested another run. Added a fixed `minimize`
+action to the existing owner-only IPC so the sampler can keep the control window
+out of the way. This exposes the already supported native minimize behavior;
+it adds no target, command, or arbitrary argument. A protocol case failed before
+implementation, then passed. UI and live relaunch tests verify minimizing retains
+state and relaunch restores the same instance. Default suite: 128 passed.

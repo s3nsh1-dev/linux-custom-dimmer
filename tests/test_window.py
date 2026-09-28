@@ -81,3 +81,17 @@ def test_emergency_button_removes_overlay_and_quits(qt_app):
     window.emergency_button.click()
     assert surface.disposed and quit_calls == [True]
     window.close()
+
+
+def test_minimize_retains_state_and_relaunch_restores_controls(qt_app):
+    controller = DimmerController(lambda: qt_app.primaryScreen(), Surface)
+    window = ControlWindow(controller, lambda: None)
+    window.show()
+    controller.start()
+    surface = controller.overlay
+    window.showMinimized()
+    assert window.isMinimized() and controller.state.mode is Mode.ACTIVE
+    window.show_existing()
+    assert not window.isMinimized() and controller.overlay is surface
+    window.close()
+    assert surface.disposed

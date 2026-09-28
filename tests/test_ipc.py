@@ -9,6 +9,7 @@ from linux_custom_dimmer.ipc import decode_request
     "payload",
     [
         {"action": "show"},
+        {"action": "minimize"},
         {"action": "stop"},
         {"action": "start"},
         {"action": "status"},

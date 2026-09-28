@@ -198,6 +198,7 @@ def main():
                     raise
                 time.sleep(0.05)
         assert status["available"], status
+        call("minimize")
         with ctl.backend.pinned(ctl.identity.unit) as properties:
             ctl.verify(properties)
             pid = int(properties["MainPID"])
